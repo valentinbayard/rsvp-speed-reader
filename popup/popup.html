@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RSVP Speed Reader</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>RSVP Speed Reader</h1>
+      <p class="subtitle">Lecture rapide sur page web</p>
+    </header>
+
+    <main>
+      <button id="activateBtn" class="primary-btn">
+        Lire l'article
+      </button>
+
+      <div class="settings">
+        <h2>Paramètres</h2>
+
+        <div class="setting-group">
+          <label for="wpmSlider">
+            Vitesse de lecture
+            <span class="value" id="wpmValue">550</span> MPM
+          </label>
+          <input type="range" id="wpmSlider" min="100" max="1000" step="25" value="550">
+          <div class="range-labels">
+            <span>100</span>
+            <span>550</span>
+            <span>1000</span>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label for="countdownSelect">Compte à rebours</label>
+          <select id="countdownSelect">
+            <option value="0">Désactivé</option>
+            <option value="1">1 seconde</option>
+            <option value="2">2 secondes</option>
+            <option value="3" selected>3 secondes</option>
+          </select>
+        </div>
+
+        <div class="setting-group checkbox">
+          <label>
+            <input type="checkbox" id="pauseOnPunctuation" checked>
+            <span>Pause sur ponctuation</span>
+          </label>
+          <p class="description">Ajoute un délai après les virgules et points</p>
+        </div>
+
+        <div class="setting-group checkbox">
+          <label>
+            <input type="checkbox" id="adjustForWordLength" checked>
+            <span>Temps supplémentaire pour mots longs</span>
+          </label>
+          <p class="description">Affiche les mots longs plus longtemps</p>
+        </div>
+      </div>
+
+      <div class="shortcuts">
+        <h3>Raccourcis clavier</h3>
+        <div class="shortcut-list">
+          <div class="shortcut-item">
+            <kbd>Espace</kbd>
+            <span>Pause / Reprendre</span>
+          </div>
+          <div class="shortcut-item">
+            <kbd>←</kbd>
+            <span>Reculer de 5 mots</span>
+          </div>
+          <div class="shortcut-item">
+            <kbd>→</kbd>
+            <span>Avancer de 5 mots</span>
+          </div>
+          <div class="shortcut-item">
+            <kbd>↑</kbd>
+            <span>+25 MPM</span>
+          </div>
+          <div class="shortcut-item">
+            <kbd>↓</kbd>
+            <span>-25 MPM</span>
+          </div>
+          <div class="shortcut-item">
+            <kbd>Échap</kbd>
+            <span>Arrêter</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p class="save-status" id="saveStatus"></p>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
