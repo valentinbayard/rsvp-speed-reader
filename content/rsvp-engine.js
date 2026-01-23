@@ -82,7 +82,24 @@ function parseTextToWords(text) {
     mergedWords.push(word);
   }
 
-  const words = mergedWords
+  // Split hyphenated words: "Notre-Dame-de-Betharam" → ["Notre-", "Dame-", "de-", "Betharam"]
+  const expandedWords = [];
+  for (const word of mergedWords) {
+    if (word.includes('-') && word.length > 1) {
+      const parts = word.split('-');
+      for (let i = 0; i < parts.length; i++) {
+        if (parts[i]) {
+          // Add hyphen to end of each part except the last
+          const part = i < parts.length - 1 ? parts[i] + '-' : parts[i];
+          expandedWords.push(part);
+        }
+      }
+    } else {
+      expandedWords.push(word);
+    }
+  }
+
+  const words = expandedWords
     .map(processWord)
     .filter(word => word !== null);
 
