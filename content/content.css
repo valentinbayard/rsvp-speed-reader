@@ -194,6 +194,14 @@
   }
 }
 
+/* Accessibility: respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .rsvp-fade-in,
+  .rsvp-fade-out {
+    animation: none;
+  }
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .rsvp-word-display {

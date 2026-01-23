@@ -63,8 +63,7 @@ Fast_reader/
 │   └── popup.css          # Styles du popup
 ├── icons/                 # Icônes de l'extension
 └── lib/
-    ├── Readability.js     # Mozilla Readability
-    └── storage.js         # Utilitaires de stockage
+    └── Readability.js     # Mozilla Readability
 ```
 
 ## Crédits
