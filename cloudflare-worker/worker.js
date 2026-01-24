@@ -17,9 +17,8 @@
  *   }
  */
 
-// Import Readability (you'll need to bundle this or use a CDN version)
-// For Cloudflare Workers, you can use the npm package with wrangler
-import { Readability } from '@penseapp/readability';
+// Import Readability and DOM parser for Cloudflare Workers
+import { Readability } from '@mozilla/readability';
 import { parseHTML } from 'linkedom';
 
 // CORS headers for cross-origin requests
