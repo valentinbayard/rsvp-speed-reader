@@ -1,0 +1,36 @@
+// Generate placeholder PNG icons for PWA
+const fs = require('fs');
+
+const sizes = [192, 512];
+
+// Create a minimal valid PNG with a solid color
+// This is a proper PNG file that will work as a placeholder
+function createColoredPng() {
+  // This is a pre-generated 1x1 dark blue (#0f0f23) PNG
+  // Browsers will scale it - not pretty but functional
+  return Buffer.from([
+    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+    0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+    0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+    0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
+    0x54, 0x08, 0xD7, 0x63, 0x90, 0x98, 0xD8, 0x04,
+    0x00, 0x01, 0x11, 0x00, 0xCA, 0xB5, 0xFE, 0xC8,
+    0xBC, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+    0x44, 0xAE, 0x42, 0x60, 0x82
+  ]);
+}
+
+const png = createColoredPng();
+
+for (const size of sizes) {
+  fs.writeFileSync(`icons/icon-${size}.png`, png);
+  console.log(`Created placeholder icon-${size}.png`);
+}
+fs.writeFileSync('icons/maskable-icon.png', png);
+console.log('Created placeholder maskable-icon.png');
+
+console.log('\nNote: These are 1x1 pixel placeholders.');
+console.log('For proper icons, use a tool like:');
+console.log('  - https://pwa-asset-generator.nickvision.org/');
+console.log('  - ImageMagick: convert icon.svg -resize 512x512 icon-512.png');
