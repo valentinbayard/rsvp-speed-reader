@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#e94560">
+  <meta name="description" content="Lisez vos articles en un éclair avec la technologie RSVP">
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/css/styles.css">
+
+  <title>RSVP Speed Reader</title>
+</head>
+<body>
+  <!-- Main App Screen -->
+  <div id="app" class="screen active">
+    <header class="app-header">
+      <h1>RSVP Reader</h1>
+      <button id="settings-btn" class="icon-btn" aria-label="Paramètres">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+        </svg>
+      </button>
+    </header>
+
+    <main class="app-main">
+      <!-- URL Input -->
+      <div class="input-section">
+        <label for="url-input">URL de l'article</label>
+        <div class="input-group">
+          <input
+            type="url"
+            id="url-input"
+            placeholder="https://..."
+            autocomplete="off"
+            autocapitalize="off"
+          >
+          <button id="read-url-btn" class="primary-btn">Lire</button>
+        </div>
+      </div>
+
+      <!-- OR Divider -->
+      <div class="divider">
+        <span>ou</span>
+      </div>
+
+      <!-- Text Input -->
+      <div class="input-section">
+        <label for="text-input">Coller du texte</label>
+        <textarea
+          id="text-input"
+          placeholder="Collez votre texte ici..."
+          rows="6"
+        ></textarea>
+        <button id="read-text-btn" class="primary-btn full-width">Lire le texte</button>
+      </div>
+
+      <!-- Loading State -->
+      <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <p>Extraction de l'article...</p>
+      </div>
+
+      <!-- Error State -->
+      <div id="error" class="error-message hidden">
+        <p id="error-text"></p>
+        <button id="error-dismiss" class="secondary-btn">OK</button>
+      </div>
+    </main>
+
+    <!-- Install Prompt -->
+    <div id="install-prompt" class="install-prompt hidden">
+      <p>Installer l'app pour un accès rapide</p>
+      <button id="install-btn" class="secondary-btn">Installer</button>
+      <button id="install-dismiss" class="icon-btn" aria-label="Fermer">×</button>
+    </div>
+  </div>
+
+  <!-- Settings Screen -->
+  <div id="settings" class="screen">
+    <header class="app-header">
+      <button id="settings-back" class="icon-btn" aria-label="Retour">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+      </button>
+      <h1>Paramètres</h1>
+      <div class="spacer"></div>
+    </header>
+
+    <main class="settings-main">
+      <!-- Speed -->
+      <div class="setting-group">
+        <label for="speed-slider">
+          Vitesse de lecture
+          <span id="speed-value" class="setting-value">550 MPM</span>
+        </label>
+        <input
+          type="range"
+          id="speed-slider"
+          min="100"
+          max="1000"
+          step="25"
+          value="550"
+        >
+        <div class="range-labels">
+          <span>100</span>
+          <span>1000</span>
+        </div>
+      </div>
+
+      <!-- Countdown -->
+      <div class="setting-group">
+        <label for="countdown-slider">
+          Compte à rebours
+          <span id="countdown-value" class="setting-value">3s</span>
+        </label>
+        <input
+          type="range"
+          id="countdown-slider"
+          min="0"
+          max="5"
+          step="1"
+          value="3"
+        >
+        <div class="range-labels">
+          <span>0s</span>
+          <span>5s</span>
+        </div>
+      </div>
+
+      <!-- Toggle: Pause on punctuation -->
+      <div class="setting-toggle">
+        <label for="pause-punctuation">Pause sur la ponctuation</label>
+        <input type="checkbox" id="pause-punctuation" checked>
+      </div>
+
+      <!-- Toggle: Adjust for word length -->
+      <div class="setting-toggle">
+        <label for="adjust-length">Ajuster selon la longueur des mots</label>
+        <input type="checkbox" id="adjust-length" checked>
+      </div>
+
+      <!-- API Endpoint (for development) -->
+      <div class="setting-group advanced">
+        <label for="api-endpoint">API Endpoint</label>
+        <input
+          type="url"
+          id="api-endpoint"
+          placeholder="https://your-worker.workers.dev"
+        >
+        <p class="setting-hint">Cloudflare Worker URL pour l'extraction d'articles</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- Reader Screen (fullscreen RSVP) -->
+  <div id="reader" class="screen reader-screen">
+    <div class="focal-line"></div>
+
+    <div class="word-container">
+      <div id="word-display" class="word-display"></div>
+    </div>
+
+    <div class="reader-controls">
+      <div class="reader-progress">
+        Mot <span id="current-word">1</span> / <span id="total-words">0</span>
+      </div>
+      <div class="reader-speed">
+        <span id="current-speed">550</span> MPM
+      </div>
+    </div>
+
+    <div id="reader-status" class="reader-status">Lecture</div>
+
+    <button id="reader-close" class="reader-close" aria-label="Fermer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 6L6 18M6 6l12 12"/>
+      </svg>
+    </button>
+
+    <!-- Touch hint (shown once) -->
+    <div id="touch-hint" class="touch-hint hidden">
+      <p>Touchez pour pause</p>
+      <p class="hint-sub">Glissez ←→ pour naviguer</p>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/js/rsvp-engine.js"></script>
+  <script src="/js/storage.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

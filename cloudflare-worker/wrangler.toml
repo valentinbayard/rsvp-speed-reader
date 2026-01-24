@@ -1,0 +1,17 @@
+name = "rsvp-reader-proxy"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Uncomment to enable custom domain
+# routes = [
+#   { pattern = "api.your-domain.com/*", zone_name = "your-domain.com" }
+# ]
+
+# Development settings
+[dev]
+port = 8787
+local_protocol = "http"
+
+# Production settings
+[env.production]
+# Add any production-specific settings here
