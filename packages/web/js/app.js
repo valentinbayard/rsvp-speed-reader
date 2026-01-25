@@ -143,6 +143,7 @@
     elements.installBtn.addEventListener('click', handleInstall);
     elements.installDismiss.addEventListener('click', () => {
       elements.installPrompt.classList.add('hidden');
+      localStorage.setItem('iosInstallDismissed', 'true');
     });
   }
 
@@ -526,9 +527,30 @@
   }
 
   /**
+   * Detect iOS Safari
+   */
+  function isIOSSafari() {
+    const ua = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/.test(ua);
+    return isIOS && isSafari;
+  }
+
+  /**
+   * Check if running as installed PWA
+   */
+  function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  }
+
+  /**
    * Set up install prompt
    */
   function setupInstallPrompt() {
+    // Don't show if already installed
+    if (isStandalone()) return;
+
+    // Android/Chrome: use native install prompt
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredInstallPrompt = e;
@@ -539,6 +561,16 @@
       elements.installPrompt.classList.add('hidden');
       deferredInstallPrompt = null;
     });
+
+    // iOS Safari: show manual instructions after a delay
+    if (isIOSSafari() && !localStorage.getItem('iosInstallDismissed')) {
+      setTimeout(() => {
+        const prompt = elements.installPrompt;
+        prompt.querySelector('p').innerHTML = 'Installer: appuyez sur <strong>Partager</strong> puis <strong>Sur l\'écran d\'accueil</strong>';
+        prompt.querySelector('#install-btn').style.display = 'none';
+        prompt.classList.remove('hidden');
+      }, 3000);
+    }
   }
 
   /**
