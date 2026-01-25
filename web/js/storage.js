@@ -7,7 +7,7 @@ const DEFAULT_SETTINGS = {
   countdownDuration: 3,
   pauseOnPunctuation: true,
   adjustForWordLength: true,
-  apiEndpoint: '',
+  apiEndpoint: 'https://rsvp-reader-proxy.valentin-bayard.workers.dev',
   hasSeenTouchHint: false
 };
 
