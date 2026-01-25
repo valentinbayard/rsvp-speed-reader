@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Icon Generator</title>
+</head>
+<body>
+  <h1>Right-click each canvas and "Save image as..."</h1>
+
+  <h2>icon-192.png</h2>
+  <canvas id="icon192" width="192" height="192"></canvas>
+
+  <h2>icon-512.png</h2>
+  <canvas id="icon512" width="512" height="512"></canvas>
+
+  <h2>maskable-icon.png (with safe zone padding)</h2>
+  <canvas id="maskable" width="512" height="512"></canvas>
+
+  <script>
+    function drawIcon(canvas, size, maskable = false) {
+      const ctx = canvas.getContext('2d');
+
+      // Background
+      ctx.fillStyle = '#0f0f23';
+      ctx.fillRect(0, 0, size, size);
+
+      // Padding for maskable (safe zone is 80%)
+      const padding = maskable ? size * 0.15 : size * 0.1;
+
+      // Draw "R" letter
+      ctx.fillStyle = '#e94560';
+      ctx.font = `bold ${size * 0.5}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('R', size / 2, size / 2 + size * 0.02);
+
+      // Draw focal lines (top and bottom)
+      const lineWidth = Math.max(2, size * 0.015);
+      const lineHeight = size * 0.15;
+      ctx.fillStyle = '#e94560';
+      ctx.fillRect(size / 2 - lineWidth / 2, padding, lineWidth, lineHeight);
+      ctx.fillRect(size / 2 - lineWidth / 2, size - padding - lineHeight, lineWidth, lineHeight);
+    }
+
+    drawIcon(document.getElementById('icon192'), 192);
+    drawIcon(document.getElementById('icon512'), 512);
+    drawIcon(document.getElementById('maskable'), 512, true);
+  </script>
+</body>
+</html>
