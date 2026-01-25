@@ -1,13 +1,16 @@
 // RSVP Speed Reader - Service Worker
 
-const CACHE_NAME = 'rsvp-reader-v1';
+const CACHE_NAME = 'rsvp-reader-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/css/styles.css',
+  // Shared modules from @rsvp-reader/shared
+  '/js/shared/rsvp-engine.browser.js',
+  '/js/shared/text-utils.browser.js',
+  // App-specific scripts
   '/js/app.js',
-  '/js/rsvp-engine.js',
   '/js/storage.js',
   '/js/api.js',
   '/icons/icon-192.png',

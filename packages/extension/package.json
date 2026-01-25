@@ -1,0 +1,14 @@
+{
+  "name": "@rsvp-reader/extension",
+  "version": "1.0.0",
+  "description": "RSVP Speed Reader Chrome Extension",
+  "private": true,
+  "scripts": {
+    "build": "npm run build:shared && npm run copy:shared",
+    "build:shared": "npm run build:browser -w @rsvp-reader/shared",
+    "copy:shared": "cp ../shared/dist/*.js lib/shared/"
+  },
+  "dependencies": {
+    "@rsvp-reader/shared": "1.0.0"
+  }
+}

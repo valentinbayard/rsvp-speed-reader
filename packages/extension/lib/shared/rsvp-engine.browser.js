@@ -1,4 +1,11 @@
-// RSVP Engine - Core reading logic (standalone web version)
+// RSVP Engine - Browser bundle (auto-generated)
+// Do not edit directly - edit src/rsvp-engine.js instead
+
+(function(global) {
+  'use strict';
+
+// RSVP Engine - Core reading logic
+// Shared between Chrome Extension and PWA
 
 /**
  * Calculate the Optimal Recognition Point (ORP) index for a word
@@ -356,15 +363,17 @@ class RSVPReader {
   }
 }
 
-// Export for module systems or global use
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { RSVPReader, parseTextToWords, getORPIndex };
-} else {
-  window.RSVPReader = RSVPReader;
-  window.rsvpUtils = {
-    getORPIndex,
-    processWord,
-    parseTextToWords,
-    getWordDuration
-  };
-}
+// Utility exports
+const rsvpUtils = {
+  getORPIndex,
+  processWord,
+  parseTextToWords,
+  getWordDuration
+};
+
+
+  // Expose to global scope
+  global.RSVPReader = RSVPReader;
+  global.rsvpUtils = rsvpUtils;
+
+})(typeof window !== 'undefined' ? window : this);

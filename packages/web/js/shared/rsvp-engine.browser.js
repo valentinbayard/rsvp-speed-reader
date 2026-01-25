@@ -1,4 +1,11 @@
+// RSVP Engine - Browser bundle (auto-generated)
+// Do not edit directly - edit src/rsvp-engine.js instead
+
+(function(global) {
+  'use strict';
+
 // RSVP Engine - Core reading logic
+// Shared between Chrome Extension and PWA
 
 /**
  * Calculate the Optimal Recognition Point (ORP) index for a word
@@ -19,7 +26,7 @@ function getORPIndex(word) {
 /**
  * Process a word and extract metadata
  * @param {string} word - Raw word string
- * @returns {Object} Word object with metadata
+ * @returns {Object|null} Word object with metadata
  */
 function processWord(word) {
   const trimmed = word.trim();
@@ -163,7 +170,12 @@ function getWordDuration(wordObj, baseWPM, settings = {}) {
  */
 class RSVPReader {
   constructor(settings = {}) {
-    this.settings = settings;
+    this.settings = {
+      wpm: 550,
+      pauseOnPunctuation: true,
+      adjustForWordLength: true,
+      ...settings
+    };
     this.words = [];
     this.currentIndex = 0;
     this.isPlaying = false;
@@ -184,6 +196,14 @@ class RSVPReader {
     this.currentIndex = 0;
     this.isPlaying = false;
     this.isPaused = false;
+  }
+
+  /**
+   * Get total word count
+   * @returns {number}
+   */
+  getWordCount() {
+    return this.words.length;
   }
 
   /**
@@ -217,6 +237,19 @@ class RSVPReader {
 
     this.isPaused = false;
     this.showNextWord();
+  }
+
+  /**
+   * Toggle pause/resume
+   * @returns {boolean} New paused state
+   */
+  togglePause() {
+    if (this.isPaused) {
+      this.resume();
+    } else {
+      this.pause();
+    }
+    return this.isPaused;
   }
 
   /**
@@ -330,11 +363,17 @@ class RSVPReader {
   }
 }
 
-// Make available globally for content script
-window.RSVPReader = RSVPReader;
-window.rsvpUtils = {
+// Utility exports
+const rsvpUtils = {
   getORPIndex,
   processWord,
   parseTextToWords,
   getWordDuration
 };
+
+
+  // Expose to global scope
+  global.RSVPReader = RSVPReader;
+  global.rsvpUtils = rsvpUtils;
+
+})(typeof window !== 'undefined' ? window : this);

@@ -9,11 +9,11 @@
     "tail": "wrangler tail"
   },
   "dependencies": {
-    "@mozilla/readability": "^0.5.0",
+    "@mozilla/readability": "^0.6.0",
     "linkedom": "^0.18.0"
   },
   "devDependencies": {
-    "wrangler": "^3.0.0"
+    "wrangler": "^4.60.0"
   },
   "keywords": [
     "cloudflare",

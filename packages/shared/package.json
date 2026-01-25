@@ -1,0 +1,20 @@
+{
+  "name": "@rsvp-reader/shared",
+  "version": "1.0.0",
+  "description": "Shared RSVP reading engine and utilities",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./rsvp-engine": "./src/rsvp-engine.js",
+    "./text-utils": "./src/text-utils.js",
+    "./settings": "./src/settings.js"
+  },
+  "scripts": {
+    "build:browser": "node scripts/build-browser.js"
+  },
+  "keywords": [
+    "rsvp",
+    "speed-reading"
+  ],
+  "license": "MIT"
+}

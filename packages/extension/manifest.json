@@ -15,7 +15,7 @@
   "content_scripts": [
     {
       "matches": ["https://*/*", "http://*/*"],
-      "js": ["lib/Readability.js", "content/rsvp-engine.js", "content/content.js"],
+      "js": ["lib/Readability.js", "lib/shared/rsvp-engine.browser.js", "content/content.js"],
       "css": ["content/content.css"]
     }
   ],

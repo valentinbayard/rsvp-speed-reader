@@ -1,0 +1,15 @@
+{
+  "name": "@rsvp-reader/web",
+  "version": "1.0.0",
+  "description": "RSVP Speed Reader PWA",
+  "private": true,
+  "scripts": {
+    "build": "npm run copy:shared",
+    "copy:shared": "cp ../shared/dist/*.js js/shared/",
+    "dev": "npx serve .",
+    "deploy": "npm run build && npx wrangler pages deploy . --project-name=rsvp-reader"
+  },
+  "dependencies": {
+    "@rsvp-reader/shared": "1.0.0"
+  }
+}

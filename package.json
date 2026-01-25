@@ -1,0 +1,28 @@
+{
+  "name": "rsvp-speed-reader",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RSVP Speed Reader - Chrome Extension and PWA",
+  "workspaces": [
+    "packages/shared",
+    "packages/extension",
+    "packages/web",
+    "cloudflare-worker"
+  ],
+  "scripts": {
+    "build:shared": "node packages/shared/scripts/build-browser.js",
+    "build:extension": "npm run build:shared && cp packages/shared/dist/*.js packages/extension/lib/shared/",
+    "build:web": "npm run build:shared && cp packages/shared/dist/*.js packages/web/js/shared/",
+    "dev:web": "npm run dev -w @rsvp-reader/web",
+    "dev:worker": "npm run dev -w cloudflare-worker",
+    "deploy:web": "npm run build:web && cd cloudflare-worker && ./node_modules/.bin/wrangler pages deploy ../packages/web --project-name=rsvp-reader",
+    "deploy:worker": "npm run deploy -w cloudflare-worker"
+  },
+  "keywords": [
+    "rsvp",
+    "speed-reading",
+    "chrome-extension",
+    "pwa"
+  ],
+  "license": "MIT"
+}
