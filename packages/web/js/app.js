@@ -8,6 +8,16 @@
   let settings = {};
   let deferredInstallPrompt = null;
 
+  // Reading session tracking
+  let sessionStats = {
+    startTime: null,
+    endTime: null,
+    pauseStartTime: null,
+    totalPauseTime: 0,
+    pauseCount: 0,
+    wordCount: 0
+  };
+
   // DOM Elements
   const screens = {
     app: document.getElementById('app'),
@@ -49,7 +59,16 @@
     currentSpeed: document.getElementById('current-speed'),
     readerStatus: document.getElementById('reader-status'),
     readerClose: document.getElementById('reader-close'),
-    touchHint: document.getElementById('touch-hint')
+    touchHint: document.getElementById('touch-hint'),
+
+    // Recap
+    readingRecap: document.getElementById('reading-recap'),
+    recapWords: document.getElementById('recap-words'),
+    recapTime: document.getElementById('recap-time'),
+    recapTimeLabel: document.getElementById('recap-time-label'),
+    recapWpm: document.getElementById('recap-wpm'),
+    recapWpmLabel: document.getElementById('recap-wpm-label'),
+    recapClose: document.getElementById('recap-close')
   };
 
   // Touch handling
@@ -131,6 +150,7 @@
 
     // Reader screen
     elements.readerClose.addEventListener('click', stopReading);
+    elements.recapClose.addEventListener('click', closeRecap);
 
     // Touch controls for reader
     screens.reader.addEventListener('touchstart', handleTouchStart, { passive: true });
@@ -251,6 +271,16 @@
 
     reader.loadText(text);
 
+    // Reset session stats
+    sessionStats = {
+      startTime: null,
+      endTime: null,
+      pauseStartTime: null,
+      totalPauseTime: 0,
+      pauseCount: 0,
+      wordCount: reader.getWordCount()
+    };
+
     // Set up callbacks
     reader.onWordChange = displayWord;
     reader.onProgress = updateProgress;
@@ -284,6 +314,7 @@
     const duration = settings.countdownDuration || 0;
 
     if (duration === 0) {
+      sessionStats.startTime = Date.now();
       reader.start();
       return;
     }
@@ -298,6 +329,7 @@
         elements.wordDisplay.innerHTML = `<span class="orp">${count}</span>`;
       } else {
         clearInterval(interval);
+        sessionStats.startTime = Date.now();
         reader.start();
       }
     }, 1000);
@@ -338,11 +370,96 @@
   }
 
   /**
+   * Toggle pause and track pause time
+   */
+  function togglePauseWithTracking() {
+    const isPaused = reader.togglePause();
+
+    if (isPaused) {
+      // Starting a pause
+      sessionStats.pauseStartTime = Date.now();
+      sessionStats.pauseCount++;
+    } else {
+      // Ending a pause
+      if (sessionStats.pauseStartTime) {
+        sessionStats.totalPauseTime += Date.now() - sessionStats.pauseStartTime;
+        sessionStats.pauseStartTime = null;
+      }
+    }
+
+    updateStatus(isPaused ? 'Pause' : 'Lecture', isPaused);
+    return isPaused;
+  }
+
+  /**
    * Handle reading completion
    */
   function handleReadingComplete() {
+    sessionStats.endTime = Date.now();
+
+    // If paused when finishing, add that pause time
+    if (sessionStats.pauseStartTime) {
+      sessionStats.totalPauseTime += Date.now() - sessionStats.pauseStartTime;
+      sessionStats.pauseStartTime = null;
+    }
+
     updateStatus('Terminé');
-    setTimeout(stopReading, 1500);
+    setTimeout(showRecap, 500);
+  }
+
+  /**
+   * Format duration in seconds to mm:ss or ss
+   */
+  function formatDuration(seconds) {
+    if (seconds < 60) {
+      return `${Math.round(seconds)}s`;
+    }
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.round(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  /**
+   * Show reading recap
+   */
+  function showRecap() {
+    const totalTimeMs = sessionStats.endTime - sessionStats.startTime;
+    const readingTimeMs = totalTimeMs - sessionStats.totalPauseTime;
+
+    const totalTimeSec = totalTimeMs / 1000;
+    const readingTimeSec = readingTimeMs / 1000;
+
+    const readingWpm = Math.round(sessionStats.wordCount / (readingTimeSec / 60));
+    const totalWpm = Math.round(sessionStats.wordCount / (totalTimeSec / 60));
+
+    const hadPauses = sessionStats.pauseCount > 0;
+
+    // Update recap display
+    elements.recapWords.textContent = sessionStats.wordCount.toLocaleString('fr-FR');
+
+    if (hadPauses) {
+      elements.recapTime.textContent = formatDuration(readingTimeSec);
+      elements.recapTimeLabel.innerHTML = `temps de lecture<br><span class="recap-pause-info">(${formatDuration(totalTimeSec)} avec pauses)</span>`;
+
+      elements.recapWpm.textContent = readingWpm;
+      elements.recapWpmLabel.innerHTML = `mots/min<br><span class="recap-pause-info">(${totalWpm} avec pauses)</span>`;
+    } else {
+      elements.recapTime.textContent = formatDuration(readingTimeSec);
+      elements.recapTimeLabel.textContent = 'temps de lecture';
+
+      elements.recapWpm.textContent = readingWpm;
+      elements.recapWpmLabel.textContent = 'mots/min';
+    }
+
+    elements.readingRecap.classList.remove('hidden');
+  }
+
+  /**
+   * Close recap and return to app
+   */
+  function closeRecap() {
+    elements.readingRecap.classList.add('hidden');
+    stopReading();
   }
 
   /**
@@ -385,8 +502,7 @@
       // Don't toggle if tapping the close button
       if (e.target.closest('.reader-close')) return;
 
-      const isPaused = reader.togglePause();
-      updateStatus(isPaused ? 'Pause' : 'Lecture', isPaused);
+      togglePauseWithTracking();
       return;
     }
 
@@ -426,8 +542,7 @@
     switch (e.key) {
       case ' ':
         e.preventDefault();
-        const isPaused = reader.togglePause();
-        updateStatus(isPaused ? 'Pause' : 'Lecture', isPaused);
+        togglePauseWithTracking();
         break;
 
       case 'Escape':

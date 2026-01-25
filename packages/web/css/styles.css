@@ -594,3 +594,67 @@ input[type="checkbox"]:checked::before {
 .hidden {
   display: none !important;
 }
+
+/* Reading Recap */
+.reading-recap {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 15, 35, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 100;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.reading-recap h2 {
+  font-size: 1.5rem;
+  margin-bottom: 32px;
+  color: var(--accent);
+}
+
+.recap-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 40px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.recap-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.recap-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.recap-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.recap-pause-info {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.reading-recap .primary-btn {
+  min-width: 160px;
+}
