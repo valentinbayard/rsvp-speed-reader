@@ -8,7 +8,10 @@ const DEFAULT_SETTINGS = {
   pauseOnPunctuation: true,
   adjustForWordLength: true,
   apiEndpoint: 'https://rsvp-reader-proxy.valentin-bayard.workers.dev',
-  hasSeenTouchHint: false
+  hasSeenTouchHint: false,
+  // OCR settings
+  ocrLanguage: 'fra+eng',
+  ocrShowPreview: true
 };
 
 /**

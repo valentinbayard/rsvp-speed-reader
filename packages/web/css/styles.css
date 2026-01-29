@@ -658,3 +658,212 @@ input[type="checkbox"]:checked::before {
 .reading-recap .primary-btn {
   min-width: 160px;
 }
+
+/* ==========================================
+   OCR Feature Styles
+   ========================================== */
+
+/* OCR Input Zone */
+.ocr-section {
+  margin-top: 8px;
+}
+
+.ocr-input-zone {
+  position: relative;
+  min-height: 140px;
+  border: 2px dashed var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: var(--transition);
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+
+.ocr-input-zone:hover,
+.ocr-input-zone:focus-within {
+  border-color: var(--accent);
+}
+
+.hidden-file-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.ocr-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  text-align: center;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.ocr-placeholder svg {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 12px;
+  opacity: 0.7;
+}
+
+.ocr-placeholder p {
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.ocr-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* OCR Preview */
+.ocr-preview {
+  position: relative;
+  width: 100%;
+  height: 160px;
+}
+
+.ocr-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ocr-clear-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  z-index: 20;
+}
+
+.ocr-clear-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+/* Modal Base */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 15, 35, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 200;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: 32px 24px;
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+}
+
+/* OCR Progress */
+.ocr-progress {
+  margin-bottom: 24px;
+}
+
+.ocr-progress .spinner {
+  margin-bottom: 16px;
+}
+
+.ocr-progress p {
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.progress-bar {
+  height: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.progress-text {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* OCR Result Modal */
+.ocr-result-content {
+  max-width: 500px;
+  padding: 0;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.modal-header h2 {
+  flex: 1;
+  font-size: 1.1rem;
+  text-align: center;
+  margin: 0;
+}
+
+.ocr-result-body {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.ocr-result-body textarea {
+  width: 100%;
+  min-height: 200px;
+  resize: vertical;
+}
+
+.word-count {
+  margin-top: 12px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.ocr-result-actions {
+  padding: 16px 20px;
+  border-top: 1px solid var(--bg-tertiary);
+  display: flex;
+  gap: 12px;
+}
+
+.ocr-result-actions .secondary-btn {
+  flex: 1;
+}
+
+.ocr-result-actions .primary-btn {
+  flex: 2;
+}

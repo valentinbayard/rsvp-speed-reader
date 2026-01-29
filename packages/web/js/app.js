@@ -7,6 +7,7 @@
   let reader = null;
   let settings = {};
   let deferredInstallPrompt = null;
+  let selectedOCRImage = null;
 
   // Reading session tracking
   let sessionStats = {
@@ -68,7 +69,27 @@
     recapTimeLabel: document.getElementById('recap-time-label'),
     recapWpm: document.getElementById('recap-wpm'),
     recapWpmLabel: document.getElementById('recap-wpm-label'),
-    recapClose: document.getElementById('recap-close')
+    recapClose: document.getElementById('recap-close'),
+
+    // OCR
+    ocrInput: document.getElementById('ocr-input'),
+    ocrZone: document.getElementById('ocr-zone'),
+    ocrPlaceholder: document.getElementById('ocr-placeholder'),
+    ocrPreview: document.getElementById('ocr-preview'),
+    ocrPreviewImg: document.getElementById('ocr-preview-img'),
+    ocrClear: document.getElementById('ocr-clear'),
+    scanBtn: document.getElementById('scan-btn'),
+    ocrModal: document.getElementById('ocr-modal'),
+    ocrStatus: document.getElementById('ocr-status'),
+    ocrProgressBar: document.getElementById('ocr-progress-bar'),
+    ocrProgressText: document.getElementById('ocr-progress-text'),
+    ocrCancel: document.getElementById('ocr-cancel'),
+    ocrResult: document.getElementById('ocr-result'),
+    ocrResultBack: document.getElementById('ocr-result-back'),
+    ocrTextResult: document.getElementById('ocr-text-result'),
+    ocrWordCount: document.getElementById('ocr-word-count'),
+    ocrRetake: document.getElementById('ocr-retake'),
+    ocrRead: document.getElementById('ocr-read')
   };
 
   // Touch handling
@@ -165,6 +186,17 @@
       elements.installPrompt.classList.add('hidden');
       localStorage.setItem('iosInstallDismissed', 'true');
     });
+
+    // OCR
+    elements.ocrInput.addEventListener('change', handleOCRImageSelect);
+    elements.ocrPlaceholder.addEventListener('click', () => elements.ocrInput.click());
+    elements.ocrClear.addEventListener('click', clearOCRPreview);
+    elements.scanBtn.addEventListener('click', handleOCRScan);
+    elements.ocrCancel.addEventListener('click', handleOCRCancel);
+    elements.ocrResultBack.addEventListener('click', closeOCRResult);
+    elements.ocrRetake.addEventListener('click', handleOCRRetake);
+    elements.ocrRead.addEventListener('click', handleOCRRead);
+    elements.ocrTextResult.addEventListener('input', updateOCRWordCount);
   }
 
   /**
@@ -624,6 +656,184 @@
   function handleApiEndpointChange(e) {
     settings.apiEndpoint = e.target.value.trim();
     SettingsManager.saveSettings(settings);
+  }
+
+  // ==========================================
+  // OCR Functions
+  // ==========================================
+
+  /**
+   * Handle image selection from camera/gallery
+   */
+  function handleOCRImageSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showError('Veuillez sélectionner une image');
+      return;
+    }
+
+    // Validate file size (max 20MB)
+    if (file.size > 20 * 1024 * 1024) {
+      showError('Image trop volumineuse (max 20 Mo)');
+      return;
+    }
+
+    selectedOCRImage = file;
+    showOCRPreview(file);
+  }
+
+  /**
+   * Show image preview
+   */
+  function showOCRPreview(file) {
+    const url = URL.createObjectURL(file);
+    elements.ocrPreviewImg.onload = () => URL.revokeObjectURL(url);
+    elements.ocrPreviewImg.src = url;
+
+    elements.ocrPlaceholder.classList.add('hidden');
+    elements.ocrPreview.classList.remove('hidden');
+    elements.scanBtn.disabled = false;
+  }
+
+  /**
+   * Clear image preview
+   */
+  function clearOCRPreview(e) {
+    if (e) e.stopPropagation();
+    selectedOCRImage = null;
+    elements.ocrInput.value = '';
+    elements.ocrPreviewImg.src = '';
+
+    elements.ocrPreview.classList.add('hidden');
+    elements.ocrPlaceholder.classList.remove('hidden');
+    elements.scanBtn.disabled = true;
+  }
+
+  /**
+   * Handle OCR scan button click
+   */
+  async function handleOCRScan() {
+    if (!selectedOCRImage || !OCRModule.isSupported()) {
+      showError('OCR non disponible');
+      return;
+    }
+
+    // Show processing modal
+    showOCRModal();
+
+    try {
+      const result = await OCRModule.recognizeText(selectedOCRImage, updateOCRProgress);
+
+      hideOCRModal();
+
+      if (!result.text || result.text.length < 10) {
+        showError('Aucun texte détecté. Essayez avec une image plus nette.');
+        return;
+      }
+
+      if (result.isLowConfidence) {
+        console.warn('Low OCR confidence:', result.confidence);
+      }
+
+      showOCRResult(result.text);
+
+    } catch (error) {
+      hideOCRModal();
+
+      if (error.message === 'Cancelled') {
+        return;
+      }
+
+      showError('Échec de la reconnaissance: ' + (error.message || 'Erreur inconnue'));
+    }
+  }
+
+  /**
+   * Update OCR progress UI
+   */
+  function updateOCRProgress({ status, progress }) {
+    elements.ocrStatus.textContent = status;
+    const percent = Math.round(progress * 100);
+    elements.ocrProgressBar.style.width = `${percent}%`;
+    elements.ocrProgressText.textContent = `${percent}%`;
+  }
+
+  /**
+   * Show OCR processing modal
+   */
+  function showOCRModal() {
+    elements.ocrModal.classList.remove('hidden');
+    elements.ocrProgressBar.style.width = '0%';
+    elements.ocrProgressText.textContent = '0%';
+    elements.ocrStatus.textContent = 'Préparation...';
+  }
+
+  /**
+   * Hide OCR processing modal
+   */
+  function hideOCRModal() {
+    elements.ocrModal.classList.add('hidden');
+  }
+
+  /**
+   * Handle OCR cancel
+   */
+  function handleOCRCancel() {
+    OCRModule.cancelOCR();
+    hideOCRModal();
+  }
+
+  /**
+   * Show OCR result for review
+   */
+  function showOCRResult(text) {
+    const cleanedText = ArticleAPI.cleanArticleText(text);
+    elements.ocrTextResult.value = cleanedText;
+    updateOCRWordCount();
+    elements.ocrResult.classList.remove('hidden');
+  }
+
+  /**
+   * Update word count in result modal
+   */
+  function updateOCRWordCount() {
+    const text = elements.ocrTextResult.value.trim();
+    const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+    elements.ocrWordCount.textContent = wordCount;
+  }
+
+  /**
+   * Close OCR result modal
+   */
+  function closeOCRResult() {
+    elements.ocrResult.classList.add('hidden');
+  }
+
+  /**
+   * Handle retake photo
+   */
+  function handleOCRRetake() {
+    closeOCRResult();
+    clearOCRPreview();
+    elements.ocrInput.click();
+  }
+
+  /**
+   * Read the OCR extracted text
+   */
+  function handleOCRRead() {
+    const text = elements.ocrTextResult.value.trim();
+
+    if (!text || text.length < 50) {
+      showError('Le texte est trop court');
+      return;
+    }
+
+    closeOCRResult();
+    startReading(text);
   }
 
   /**

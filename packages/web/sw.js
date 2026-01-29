@@ -1,6 +1,8 @@
 // RSVP Speed Reader - Service Worker
 
-const CACHE_NAME = 'rsvp-reader-v3';
+const CACHE_NAME = 'rsvp-reader-v4';
+const TESSERACT_CACHE = 'tesseract-v1';
+
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -13,6 +15,7 @@ const STATIC_ASSETS = [
   '/js/app.js',
   '/js/storage.js',
   '/js/api.js',
+  '/js/ocr.js',
   '/icons/icon-192.png',
   '/icons/icon-512.png'
 ];
@@ -29,11 +32,12 @@ self.addEventListener('install', (event) => {
 
 // Activate: clean up old caches
 self.addEventListener('activate', (event) => {
+  const validCaches = [CACHE_NAME, TESSERACT_CACHE];
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name !== CACHE_NAME)
+          .filter((name) => !validCaches.includes(name))
           .map((name) => caches.delete(name))
       );
     })
@@ -49,6 +53,26 @@ self.addEventListener('fetch', (event) => {
   // Handle share target requests
   if (url.pathname === '/share') {
     event.respondWith(handleShareTarget(url));
+    return;
+  }
+
+  // Cache Tesseract resources on demand (from CDNs)
+  if (url.hostname === 'unpkg.com' || url.hostname === 'tessdata.projectnaptha.com') {
+    event.respondWith(
+      caches.open(TESSERACT_CACHE).then((cache) => {
+        return cache.match(request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          return fetch(request).then((response) => {
+            if (response.ok) {
+              cache.put(request, response.clone());
+            }
+            return response;
+          });
+        });
+      })
+    );
     return;
   }
 

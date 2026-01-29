@@ -65,6 +65,42 @@
         <button id="read-text-btn" class="primary-btn full-width">Lire le texte</button>
       </div>
 
+      <!-- OR Divider -->
+      <div class="divider">
+        <span>ou</span>
+      </div>
+
+      <!-- OCR Input Section -->
+      <div class="input-section ocr-section">
+        <label>Scanner une page</label>
+        <div class="ocr-input-zone" id="ocr-zone">
+          <input
+            type="file"
+            id="ocr-input"
+            accept="image/*"
+            capture="environment"
+            class="hidden-file-input"
+          >
+          <div class="ocr-placeholder" id="ocr-placeholder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            <p>Prendre une photo</p>
+            <span class="ocr-hint">ou choisir une image</span>
+          </div>
+          <div class="ocr-preview hidden" id="ocr-preview">
+            <img id="ocr-preview-img" alt="Aperçu">
+            <button id="ocr-clear" class="icon-btn ocr-clear-btn" aria-label="Supprimer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <button id="scan-btn" class="primary-btn full-width" disabled>Scanner le texte</button>
+      </div>
+
       <!-- Loading State -->
       <div id="loading" class="loading hidden">
         <div class="spinner"></div>
@@ -216,6 +252,44 @@
     </div>
   </div>
 
+  <!-- OCR Processing Modal -->
+  <div id="ocr-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="ocr-progress">
+        <div class="spinner"></div>
+        <p id="ocr-status">Préparation...</p>
+        <div class="progress-bar">
+          <div class="progress-fill" id="ocr-progress-bar"></div>
+        </div>
+        <p class="progress-text" id="ocr-progress-text">0%</p>
+      </div>
+      <button id="ocr-cancel" class="secondary-btn">Annuler</button>
+    </div>
+  </div>
+
+  <!-- OCR Result Modal -->
+  <div id="ocr-result" class="modal hidden">
+    <div class="modal-content ocr-result-content">
+      <header class="modal-header">
+        <button id="ocr-result-back" class="icon-btn" aria-label="Retour">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <h2>Texte extrait</h2>
+        <div class="spacer"></div>
+      </header>
+      <div class="ocr-result-body">
+        <textarea id="ocr-text-result" rows="10" placeholder="Texte extrait..."></textarea>
+        <p class="word-count"><span id="ocr-word-count">0</span> mots détectés</p>
+      </div>
+      <div class="ocr-result-actions">
+        <button id="ocr-retake" class="secondary-btn">Reprendre</button>
+        <button id="ocr-read" class="primary-btn">Lire le texte</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <!-- Shared modules from @rsvp-reader/shared -->
   <script src="/js/shared/rsvp-engine.browser.js"></script>
@@ -223,6 +297,7 @@
   <!-- App-specific scripts -->
   <script src="/js/storage.js"></script>
   <script src="/js/api.js"></script>
+  <script src="/js/ocr.js"></script>
   <script src="/js/app.js"></script>
 </body>
 </html>
