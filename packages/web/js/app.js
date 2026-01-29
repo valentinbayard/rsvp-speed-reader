@@ -7,6 +7,7 @@
   let reader = null;
   let settings = {};
   let deferredInstallPrompt = null;
+  let lastDisplayedIndex = 0;
 
   // Reading session tracking
   let sessionStats = {
@@ -156,8 +157,8 @@
     screens.reader.addEventListener('touchstart', handleTouchStart, { passive: true });
     screens.reader.addEventListener('touchend', handleTouchEnd, { passive: true });
 
-    // Keyboard controls
-    document.addEventListener('keydown', handleKeydown);
+    // Keyboard controls (capture phase to intercept before page handlers)
+    document.addEventListener('keydown', handleKeydown, true);
 
     // Install prompt
     elements.installBtn.addEventListener('click', handleInstall);
@@ -339,6 +340,7 @@
    * Display a word in the reader
    */
   function displayWord(wordObj, index, total) {
+    lastDisplayedIndex = index;
     const before = wordObj.text.substring(0, wordObj.orpIndex);
     const orpChar = wordObj.text.charAt(wordObj.orpIndex);
     const after = wordObj.text.substring(wordObj.orpIndex + 1);
@@ -351,6 +353,45 @@
     elements.wordDisplay.style.transform = `translateX(${offsetCh}ch)`;
     elements.wordDisplay.innerHTML = `
       <span class="before">${before}</span><span class="orp">${orpChar}</span><span class="after">${after}</span><span class="punctuation">${wordObj.punctuation}</span>
+    `;
+  }
+
+  /**
+   * Display pause context with neighboring words
+   */
+  function displayPauseContext() {
+    if (!reader) return;
+
+    const index = lastDisplayedIndex;
+    const words = reader.words;
+    const wordObj = words[index];
+
+    if (!wordObj) return;
+
+    // Get neighbor words
+    const prevWord = index > 0 ? words[index - 1] : null;
+    const nextWord = index < words.length - 1 ? words[index + 1] : null;
+
+    // Build the current word with ORP
+    const before = wordObj.text.substring(0, wordObj.orpIndex);
+    const orpChar = wordObj.text.charAt(wordObj.orpIndex);
+    const after = wordObj.text.substring(wordObj.orpIndex + 1);
+
+    // Build neighbor text
+    const prevText = prevWord ? (prevWord.text + prevWord.punctuation + ' ') : '';
+    const nextText = nextWord ? (' ' + nextWord.text + nextWord.punctuation) : '';
+
+    // Calculate offset to keep ORP centered within the full displayed string
+    const prevLength = prevText.length;
+    const nextLength = nextText.length;
+    const totalLength = prevLength + wordObj.text.length + wordObj.punctuation.length + nextLength;
+    const orpCenter = prevLength + wordObj.orpIndex + 0.5;
+    const middle = totalLength / 2;
+    const offsetCh = middle - orpCenter;
+
+    elements.wordDisplay.style.transform = `translateX(${offsetCh}ch)`;
+    elements.wordDisplay.innerHTML = `
+      <span class="neighbor-word prev">${prevText}</span><span class="before">${before}</span><span class="orp">${orpChar}</span><span class="after">${after}</span><span class="punctuation">${wordObj.punctuation}</span><span class="neighbor-word next">${nextText}</span>
     `;
   }
 
@@ -379,11 +420,16 @@
       // Starting a pause
       sessionStats.pauseStartTime = Date.now();
       sessionStats.pauseCount++;
+      displayPauseContext();
     } else {
-      // Ending a pause
+      // Ending a pause - restore single word display
       if (sessionStats.pauseStartTime) {
         sessionStats.totalPauseTime += Date.now() - sessionStats.pauseStartTime;
         sessionStats.pauseStartTime = null;
+      }
+      const wordObj = reader.words[lastDisplayedIndex];
+      if (wordObj) {
+        displayWord(wordObj, lastDisplayedIndex, reader.words.length);
       }
     }
 
@@ -518,6 +564,9 @@
         // Swipe left - skip backward
         reader.skip(-5);
       }
+      if (reader.isPaused) {
+        displayPauseContext();
+      }
     } else if (absDeltaY > absDeltaX && absDeltaY > minSwipeDistance) {
       // Vertical swipe
       if (deltaY < 0) {
@@ -542,32 +591,44 @@
     switch (e.key) {
       case ' ':
         e.preventDefault();
+        e.stopPropagation();
         togglePauseWithTracking();
         break;
 
       case 'Escape':
         e.preventDefault();
+        e.stopPropagation();
         stopReading();
         break;
 
       case 'ArrowLeft':
         e.preventDefault();
+        e.stopPropagation();
         reader.skip(-5);
+        if (reader.isPaused) {
+          displayPauseContext();
+        }
         break;
 
       case 'ArrowRight':
         e.preventDefault();
+        e.stopPropagation();
         reader.skip(5);
+        if (reader.isPaused) {
+          displayPauseContext();
+        }
         break;
 
       case 'ArrowUp':
         e.preventDefault();
+        e.stopPropagation();
         reader.changeSpeed(reader.settings.wpm + 25);
         elements.currentSpeed.textContent = reader.settings.wpm;
         break;
 
       case 'ArrowDown':
         e.preventDefault();
+        e.stopPropagation();
         reader.changeSpeed(reader.settings.wpm - 25);
         elements.currentSpeed.textContent = reader.settings.wpm;
         break;

@@ -79,6 +79,11 @@
   margin-left: 2px;
 }
 
+/* Neighbor words shown during pause */
+.rsvp-word-display .neighbor-word {
+  color: #444;
+}
+
 /* Controls and info - positioned at bottom */
 .rsvp-controls {
   position: absolute;

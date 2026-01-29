@@ -448,6 +448,11 @@ input[type="checkbox"]:checked::before {
   opacity: 0.6;
 }
 
+/* Neighbor words shown during pause */
+.word-display .neighbor-word {
+  color: #444;
+}
+
 .reader-controls {
   position: absolute;
   bottom: 40px;

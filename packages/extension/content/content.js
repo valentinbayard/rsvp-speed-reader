@@ -7,6 +7,7 @@
   let isReading = false;
   let reader = null;
   let settings = {};
+  let lastDisplayedIndex = 0;
 
   // DOM elements
   let readerOverlay = null;
@@ -166,7 +167,7 @@
     `;
 
     document.body.appendChild(readerOverlay);
-    document.addEventListener('keydown', handleReadingKeydown);
+    document.addEventListener('keydown', handleReadingKeydown, true);
   }
 
   /**
@@ -182,6 +183,7 @@
   function displayWord(wordObj, index, total) {
     if (!readerOverlay) return;
 
+    lastDisplayedIndex = index;
     const wordDisplay = readerOverlay.querySelector('.rsvp-word-display');
     const before = wordObj.text.substring(0, wordObj.orpIndex);
     const orpChar = wordObj.text.charAt(wordObj.orpIndex);
@@ -237,7 +239,47 @@
       }, 300);
     }
 
-    document.removeEventListener('keydown', handleReadingKeydown);
+    document.removeEventListener('keydown', handleReadingKeydown, true);
+  }
+
+  /**
+   * Display pause context with neighboring words
+   */
+  function displayPauseContext() {
+    if (!readerOverlay || !reader) return;
+
+    const wordDisplay = readerOverlay.querySelector('.rsvp-word-display');
+    const index = lastDisplayedIndex;
+    const words = reader.words;
+    const wordObj = words[index];
+
+    if (!wordObj) return;
+
+    // Get neighbor words
+    const prevWord = index > 0 ? words[index - 1] : null;
+    const nextWord = index < words.length - 1 ? words[index + 1] : null;
+
+    // Build the current word with ORP
+    const before = wordObj.text.substring(0, wordObj.orpIndex);
+    const orpChar = wordObj.text.charAt(wordObj.orpIndex);
+    const after = wordObj.text.substring(wordObj.orpIndex + 1);
+
+    // Build neighbor text
+    const prevText = prevWord ? (prevWord.text + prevWord.punctuation + ' ') : '';
+    const nextText = nextWord ? (' ' + nextWord.text + nextWord.punctuation) : '';
+
+    // Calculate offset to keep ORP centered within the full displayed string
+    const prevLength = prevText.length;
+    const nextLength = nextText.length;
+    const totalLength = prevLength + wordObj.text.length + wordObj.punctuation.length + nextLength;
+    const orpCenter = prevLength + wordObj.orpIndex + 0.5;
+    const middle = totalLength / 2;
+    const offsetCh = middle - orpCenter;
+
+    wordDisplay.style.transform = `translateX(${offsetCh}ch)`;
+    wordDisplay.innerHTML = `
+      <span class="neighbor-word prev">${prevText}</span><span class="before">${before}</span><span class="orp">${orpChar}</span><span class="after">${after}</span><span class="punctuation">${wordObj.punctuation}</span><span class="neighbor-word next">${nextText}</span>
+    `;
   }
 
   /**
@@ -249,38 +291,56 @@
     switch (event.key) {
       case ' ':
         event.preventDefault();
+        event.stopPropagation();
         if (reader.isPaused) {
+          // Re-display current word without neighbors before resuming
+          const wordObj = reader.words[lastDisplayedIndex];
+          if (wordObj) {
+            displayWord(wordObj, lastDisplayedIndex, reader.words.length);
+          }
           reader.resume();
           updateStatus('Lecture');
         } else {
           reader.pause();
+          displayPauseContext();
           updateStatus('Pause', true);
         }
         break;
 
       case 'Escape':
         event.preventDefault();
+        event.stopPropagation();
         stopReading();
         break;
 
       case 'ArrowLeft':
         event.preventDefault();
+        event.stopPropagation();
         reader.skip(-5);
+        if (reader.isPaused) {
+          displayPauseContext();
+        }
         break;
 
       case 'ArrowRight':
         event.preventDefault();
+        event.stopPropagation();
         reader.skip(5);
+        if (reader.isPaused) {
+          displayPauseContext();
+        }
         break;
 
       case 'ArrowUp':
         event.preventDefault();
+        event.stopPropagation();
         reader.changeSpeed(reader.settings.wpm + 25);
         updateSpeed();
         break;
 
       case 'ArrowDown':
         event.preventDefault();
+        event.stopPropagation();
         reader.changeSpeed(reader.settings.wpm - 25);
         updateSpeed();
         break;
