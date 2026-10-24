@@ -1,9 +1,9 @@
 name: Web app (GitHub Pages)
 
+# Run it by hand (Actions → "Web app (GitHub Pages)" → Run workflow) after
+# enabling Pages with source "GitHub Actions" in the repository settings. To
+# deploy on every push, add a `push: { branches: [main], paths: ['web/**'] }` trigger.
 on:
-  push:
-    branches: [main]
-    paths: ['web/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:

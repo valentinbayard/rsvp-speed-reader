@@ -16,7 +16,7 @@ concurrency:
 jobs:
   web:
     name: Reader (unit + browser tests)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # an OS Playwright supports
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,7 +24,7 @@ jobs:
           node-version: 22
       - run: npm test
       - name: Install Playwright
-        run: npm install --no-save playwright@1.56.1 && npx playwright install --with-deps chromium
+        run: npm install --no-save playwright@1.63.0 && npx playwright install --with-deps chromium
       - run: node scripts/build-extension.mjs
       - run: node tests/e2e.mjs test-results
       - run: xvfb-run -a node tests/extension.mjs test-results

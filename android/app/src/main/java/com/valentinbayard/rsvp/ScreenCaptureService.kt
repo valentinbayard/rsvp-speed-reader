@@ -71,9 +71,9 @@ class ScreenCaptureService : AccessibilityService() {
             val result = try {
                 if (fromTile) {
                     // Let the notification shade close so the app is in front again.
-                    if (Build.VERSION.SDK_INT >= 31) {
-                        performGlobalAction(GLOBAL_ACTION_DISMISS_NOTIFICATION_SHADE)
-                    }
+                    performGlobalAction(
+                        if (Build.VERSION.SDK_INT >= 31) GLOBAL_ACTION_DISMISS_NOTIFICATION_SHADE else GLOBAL_ACTION_BACK,
+                    )
                     Thread.sleep(700)
                 }
                 ScreenTextCollector(this).collect()

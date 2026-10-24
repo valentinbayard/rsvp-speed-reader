@@ -12,7 +12,8 @@ class CaptureTileService : TileService() {
 
     override fun onStartListening() {
         qsTile?.apply {
-            state = if (ScreenCaptureService.instance != null) Tile.STATE_INACTIVE else Tile.STATE_UNAVAILABLE
+            // Never "unavailable": a tap must still be able to explain how to enable the service.
+            state = Tile.STATE_INACTIVE
             updateTile()
         }
     }
