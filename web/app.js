@@ -41,7 +41,7 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyThe
  * @param {{external?: boolean}} [how]
  */
 function openText(item, how = {}) {
-  let paragraphs = item.paragraphs ?? toParagraphs(item.text ?? '');
+  let paragraphs = item.paragraphs?.map((p) => p.normalize('NFC')) ?? toParagraphs(item.text ?? '');
   let headings = item.headings ?? [];
   if (!paragraphs.length) return false;
   let title = (item.title ?? '').trim();

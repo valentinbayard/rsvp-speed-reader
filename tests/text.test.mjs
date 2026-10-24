@@ -22,6 +22,10 @@ test('long hyphenated compounds are split, short ones and numbers are kept', () 
   assert.deepEqual(words('de 1990-2000 et -5'), ['de', '1990-2000', 'et', '-5']);
 });
 
+test('numbers grouped with spaces stay whole; currency sticks to its number', () => {
+  assert.deepEqual(words('3 000 personnes, 1\u202F500\u00A0000 € en 2020 300 jours'), ['3\u202F000', 'personnes,', '1\u202F500\u202F000\u202F€', 'en', '2020', '300', 'jours']);
+});
+
 test('token offsets point back into the paragraph', () => {
   const paras = toParagraphs('« Bonjour ! » dit-il. Ensuite, il partit.');
   for (const t of tokenize(paras)) {
@@ -41,12 +45,35 @@ test('sentences and pauses', () => {
   assert.equal(by['Nouveau'].sentenceStart, true);
 });
 
+test('French punctuation: asides, dialogue, abbreviations', () => {
+  const pauses = (s) => tokenize(toParagraphs(s)).map((t) => `${t.text}${t.pause ? `/${t.pause}` : ''}${t.sentenceStart ? '^' : ''}`);
+  assert.deepEqual(pauses('Il est — dit-on — parti (hier) ici.'), ['Il^', 'est/clause', '—\u202Fdit-on/clause', '—\u202Fparti/clause', '(hier)/clause', 'ici./sentence']);
+  assert.deepEqual(pauses('« Viens ! » dit-il. Je… je sais.'), ['«\u202FViens\u202F!\u202F»/clause^', 'dit-il./sentence', 'Je…/clause^', 'je', 'sais./sentence']);
+  assert.deepEqual(pauses('En 52 av. J.-C. pour Rome, etc. Fin [...] du texte.'), ['En^', '52', 'av.', 'J.-C.', 'pour', 'Rome,/clause', 'etc./sentence', 'Fin^', '[...]/clause', 'du', 'texte./sentence']);
+  assert.deepEqual(pauses('Né en 52 av. J.-C. Puis rien.'), ['Né^', 'en', '52', 'av.', 'J.-C./sentence', 'Puis^', 'rien./sentence']);
+});
+
 test('ORP ignores quotes and trailing punctuation', () => {
   assert.equal(orpIndex('a'), 0);
   assert.equal(orpIndex('Rien'), 1);
   assert.equal(orpIndex('«Rien'), 2);
   assert.equal(orpIndex('lecture.'), 2);
   assert.equal(orpIndex('extraordinaire'), 4);
+});
+
+test('ORP never lands on an apostrophe or a hyphen', () => {
+  for (const w of ["C'est", "d'un", "n'est", 'l’œil', "qu'il", "l'université", 'J.-C.', 'peut-être']) {
+    const t = tokenize([w])[0];
+    assert.match(Array.from(t.text.slice(t.orp))[0], /\p{L}/u, w);
+  }
+  assert.equal(orpIndex("C'est"), 2); // C'[e]st, like "Cest"
+  assert.equal(orpIndex("l'université"), 4); // l'un[i]versité: 4th of 11 letters
+});
+
+test('accents are composed, so the focus letter keeps its accent', () => {
+  const t = tokenize(toParagraphs('e\u0301te\u0301'))[0];
+  assert.equal(t.text, 'été');
+  assert.equal(Array.from(t.text.slice(t.orp))[0], 't');
 });
 
 test('sentence navigation', () => {

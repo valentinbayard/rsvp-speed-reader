@@ -5,16 +5,23 @@
 // character back to a token (and vice versa).
 
 const OPENING = /^[«“‘"'(\[{¿¡—–-]+$/u;
-const CLOSING = /^[»”’"')\]}.,;:!?…%‰]+$/u;
+const CLOSING = /^[»”’"')\]}.,;:!?…%‰€$£¥]+$/u;
 const LETTER = /[\p{L}\p{N}]/u;
 const SENTENCE_END = /[.!?…]+[\s»”’"')\]]*$/u;
 const CLAUSE_END = /[,;:]+[\s»”’"')\]]*$/u;
+const CLOSE_BRACKET = /[)\]][\s»”’"']*$/u;
+// "[…]" marks words left out of a quotation, mid-sentence.
+const ELIDED = /^[(\[](?:…|\.{3})[)\]][^\p{L}\p{N}]*$/u;
+// Digit groups split by a (narrow no-break) space are one number: 12 000, 1 500 000.
+const THOUSANDS_HEAD = /^[^\p{L}\p{N}]*[+\-−]?\d{1,3}(?:\s\d{3})*$/u;
+const THOUSANDS_GROUP = /^\d{3}(?!\d)/u;
 
 // Lower-cased abbreviations that end with a dot but do not end a sentence.
 const ABBREVIATIONS = new Set([
   'm', 'mm', 'mme', 'mmes', 'mlle', 'dr', 'pr', 'me', 'mgr', 'st', 'ste',
   'mr', 'mrs', 'ms', 'prof', 'sr', 'jr', 'vs', 'cf', 'ex', 'p', 'pp', 'vol',
   'n', 'no', 'av', 'bd', 'env', 'fig', 'chap', 'art', 'al', 'éd', 'ed',
+  't', 'hab', 'coll', 'ibid', 'op', 'cit', 'trad', 'cie', 'tél', 'sq', 'sqq',
   'e.g', 'i.e', 'approx', 'janv', 'févr', 'avr', 'juil', 'sept', 'oct', 'nov', 'déc',
   'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'dec',
 ]);
@@ -34,7 +41,7 @@ export function toParagraphs(raw) {
 }
 
 function cleanLine(s) {
-  return String(s).replace(/[ \t\n\f\v]+/g, ' ').trim();
+  return String(s).normalize('NFC').replace(/[ \t\n\f\v]+/g, ' ').trim();
 }
 
 /**
@@ -63,12 +70,18 @@ export function tokenize(paragraphs) {
     let pendingOpen = null;
     for (const run of runs) {
       const s = para.slice(run.start, run.end);
+      const prev = merged[merged.length - 1];
+      // A dash or a bracket opens an aside: pause before it, as for a comma.
+      if (prev && (s === '-' || /^[(\[—–]/u.test(s)) && !ELIDED.test(s)) prev.breakAfter = true;
       if (pendingOpen) {
         run.start = pendingOpen.start;
         pendingOpen = null;
+      } else if (prev && run.start - prev.end === 1 && THOUSANDS_GROUP.test(s) && THOUSANDS_HEAD.test(para.slice(prev.start, prev.end))) {
+        prev.end = run.end;
+        continue;
       }
       if (CLOSING.test(s) && merged.length && !OPENING.test(s)) {
-        merged[merged.length - 1].end = run.end;
+        prev.end = run.end;
       } else if (OPENING.test(s) && !LETTER.test(s)) {
         // Opening quotes and dashes lean on the next word; a stray trailing one
         // on the previous word.
@@ -94,6 +107,7 @@ export function tokenize(paragraphs) {
           from += part.length;
         }
         pieces[pieces.length - 1].joined = false;
+        pieces[pieces.length - 1].breakAfter = run.breakAfter;
       } else {
         pieces.push(run);
       }
@@ -104,10 +118,16 @@ export function tokenize(paragraphs) {
       const raw = para.slice(run.start, run.end);
       const text = raw.replace(/\s+/gu, '\u202F');
       const isLast = i === pieces.length - 1;
+      const next = isLast ? '' : para.slice(pieces[i + 1].start, pieces[i + 1].end);
       let pause = null;
       if (!run.joined) {
-        if (SENTENCE_END.test(raw) && !isAbbreviation(raw)) pause = 'sentence';
-        else if (CLAUSE_END.test(raw)) pause = 'clause';
+        if (SENTENCE_END.test(raw) && !ELIDED.test(raw)) {
+          const abbr = abbreviation(raw);
+          // « Viens ! » dit-il : a lower-case word after the stop continues the sentence.
+          if (!abbr) pause = /^[^\p{L}\p{N}]*\p{Ll}/u.test(next) ? 'clause' : 'sentence';
+          else if (abbr === 'maybe' && (isLast || /^[^\p{L}\p{N}]*\p{Lu}/u.test(next))) pause = 'sentence';
+        }
+        if (!pause && (CLAUSE_END.test(raw) || CLOSE_BRACKET.test(raw) || ELIDED.test(raw) || run.breakAfter)) pause = 'clause';
       }
       tokens.push({
         text,
@@ -125,28 +145,31 @@ export function tokenize(paragraphs) {
   return tokens;
 }
 
-function isAbbreviation(word) {
+/** 'always' for known abbreviations and initials, 'maybe' for dotted acronyms (J.-C., S.A.). */
+function abbreviation(word) {
   const core = word.replace(/^[^\p{L}\p{N}]+/u, '').replace(/[\s»”’"')\]]+$/u, '');
-  if (!core.endsWith('.') || core.endsWith('..')) return false;
-  const stem = core.slice(0, -1).toLowerCase();
-  if (/^\p{Lu}$/u.test(core.slice(0, -1))) return true; // initials: J. K. Rowling
-  return ABBREVIATIONS.has(stem);
+  if (!core.endsWith('.') || core.endsWith('..')) return null;
+  const stem = core.slice(0, -1);
+  if (/^\p{Lu}$/u.test(stem)) return 'always'; // initials: J. K. Rowling
+  if (ABBREVIATIONS.has(stem.toLowerCase())) return 'always';
+  if (/^\p{L}{1,2}(?:\.-?\p{L}{1,2})+$/u.test(stem)) return 'maybe';
+  return null;
 }
 
 /**
- * Optimal recognition point: the letter the eye should land on.
- * Counted on letters only, ignoring leading quotes/brackets and trailing punctuation.
+ * Optimal recognition point: the letter the eye should land on, just left of
+ * the middle (the word-length table of Spritz-style readers). Counted on letters only, so
+ * quotes, apostrophes (l'œil, c'est) and hyphens are never highlighted.
  */
 export function orpIndex(text) {
   const chars = Array.from(text);
-  let first = chars.findIndex((c) => LETTER.test(c));
-  if (first < 0) return Math.floor((chars.length - 1) / 2);
-  let last = chars.length - 1;
-  while (last > first && !LETTER.test(chars[last])) last--;
-  const len = last - first + 1;
-  const offset = len <= 1 ? 0 : len <= 5 ? 1 : len <= 9 ? 2 : len <= 13 ? 3 : 4;
+  const letters = [];
+  chars.forEach((c, k) => LETTER.test(c) && letters.push(k));
+  if (!letters.length) return chars.slice(0, Math.floor((chars.length - 1) / 2)).join('').length;
+  const n = letters.length;
+  const offset = n <= 1 ? 0 : n <= 5 ? 1 : n <= 9 ? 2 : n <= 13 ? 3 : 4;
   // Index in UTF-16 units of the chosen code point.
-  return chars.slice(0, first + offset).join('').length;
+  return chars.slice(0, letters[offset]).join('').length;
 }
 
 /** Number of letters in a token (for timing). */

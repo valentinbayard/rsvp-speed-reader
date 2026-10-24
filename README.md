@@ -44,7 +44,7 @@ It reads from anywhere:
 
 Timing:
 - Each word gets 60000/WPM ms, longer for long words and numbers.
-- There is a short pause after commas, and a longer one after sentences and paragraphs.
+- There is a short pause after commas and around asides (dashes, parentheses), and a longer one after sentences and paragraphs. A stop followed by a lower-case word (« Viens ! » dit-il) does not end the sentence.
 - The first few words after starting are a little slower, so your eyes can lock on.
 
 ## Install
