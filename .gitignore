@@ -1,25 +1,4 @@
-# OS files
-.DS_Store
-Thumbs.db
-
-# Editor files
-*.swp
-*.swo
-*~
-.idea/
-.vscode/
-
-# Node (if added later)
 node_modules/
-
-# Build artifacts
+test-results/
+extension/web/
 *.zip
-*.crx
-dist/
-
-# Wrangler
-.wrangler/
-
-# Local development
-.env
-*.log

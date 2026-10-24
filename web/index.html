@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>Lecture rapide</title>
+  <meta name="description" content="Lecteur RSVP : lisez un mot à la fois, vite.">
+  <meta name="theme-color" content="#f2eee3" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14130f" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" href="app.css">
+  <link rel="preload" href="fonts/literata-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="modulepreload" href="reader/reader.js">
+</head>
+<body>
+  <main id="home" hidden>
+    <header class="brand">
+      <div class="logo" aria-hidden="true"><span>Le</span><b>c</b><span>ture</span></div>
+      <h1>Lecture rapide</h1>
+    </header>
+
+    <section class="card input-card">
+      <textarea id="input" rows="5" placeholder="Collez un texte ou un lien…" aria-label="Texte ou lien à lire"></textarea>
+      <div class="input-actions">
+        <button id="paste" class="ghost" type="button">Coller</button>
+        <span id="input-info" class="muted"></span>
+        <button id="read" class="primary" type="button" disabled>Lire</button>
+      </div>
+      <p id="input-error" class="error" hidden></p>
+    </section>
+
+    <section id="android-setup" class="card setup" hidden></section>
+
+    <section id="library-section" hidden>
+      <h2>Récemment</h2>
+      <ul id="library"></ul>
+    </section>
+
+    <section id="web-help" class="help" hidden>
+      <h2>Lire depuis n’importe où</h2>
+      <p>Sur Android, installez l’application : elle lit le texte affiché dans n’importe quelle app, y compris les articles payants de vos applis d’actualité.</p>
+      <p>Sur ordinateur, l’extension Chrome lit l’article de la page ouverte (avec votre abonnement).</p>
+      <p><a href="https://github.com/valentinbayard/rsvp-speed-reader/releases/latest">Télécharger l’app Android et l’extension</a></p>
+    </section>
+  </main>
+
+  <div id="loading" class="loading" hidden><div class="dots"><i></i><i></i><i></i></div><p></p></div>
+  <div id="reader-host"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

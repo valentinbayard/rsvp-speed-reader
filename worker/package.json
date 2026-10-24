@@ -1,0 +1,16 @@
+{
+  "name": "rsvp-reader-proxy",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "dependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "linkedom": "^0.18.14"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

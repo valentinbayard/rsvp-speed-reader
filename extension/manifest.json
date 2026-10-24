@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Lecture rapide",
+  "version": "2.0.0",
+  "description": "Lisez l’article de la page (ou la sélection) un mot à la fois.",
+  "permissions": ["activeTab", "scripting", "contextMenus", "storage"],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_title": "Lecture rapide (Alt+Maj+R)",
+    "default_icon": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+  },
+  "icons": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "commands": {
+    "_execute_action": { "suggested_key": { "default": "Alt+Shift+R" } }
+  },
+  "web_accessible_resources": [
+    { "resources": ["web/*", "web/core/*", "web/reader/*", "web/fonts/*"], "matches": ["<all_urls>"] }
+  ]
+}

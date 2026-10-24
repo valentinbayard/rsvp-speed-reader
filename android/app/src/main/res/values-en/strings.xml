@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Speed reader</string>
+    <string name="share_label">Speed read</string>
+    <string name="process_text_label">Speed read</string>
+    <string name="a11y_label">Speed reader · read screen</string>
+    <string name="a11y_description">Tap the accessibility button in any app to speed-read the text on screen (article, web page, email…). Text is only read when you ask, and never leaves your phone.</string>
+    <string name="tile_label">Speed read</string>
+    <string name="capturing">Reading the screen…</string>
+    <string name="nothing_found">No text to read on this screen</string>
+    <string name="open_article_first">Open the article first, then tap the button</string>
+    <string name="enable_service_first">Enable the service in the app first</string>
+    <string name="browser_read">Read</string>
+    <string name="browser_hint">Log in if needed, then tap “Read”</string>
+    <string name="browser_no_text">Not enough text on this page</string>
+</resources>

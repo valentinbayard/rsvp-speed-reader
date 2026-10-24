@@ -1,75 +1,92 @@
-# RSVP Speed Reader - Extension Chrome
+# Lecture rapide
 
-Extension Chrome permettant de lire rapidement du texte sur n'importe quelle page web en utilisant la méthode RSVP (Rapid Serial Visual Presentation).
+A speed reader (RSVP): words are flashed one at a time at the same spot, with
+the focus letter in red, so your eyes never have to move.
 
-## Fonctionnalités
+It reads from anywhere:
 
-- **Extraction automatique d'articles** avec Readability.js (même technologie que Firefox Reader Mode)
-- **Lecture RSVP** avec alignement sur le point de reconnaissance optimal (ORP)
-- **Traitement intelligent du texte** :
-  - Ralentissement sur les noms propres et les nombres (années, dates)
-  - Gestion de la typographie française (« », !, ?, :, ;)
-  - Filtrage des légendes de photos et crédits
-- **Accélération progressive** au démarrage pour un confort optimal
-- **Contrôles clavier** complets
+| Where | How |
+|---|---|
+| **Android, any app** | Tap the **accessibility button** (or the quick settings tile). The app reads the text on screen, including subscriber-only articles in your news apps, because it reads what *your* logged-in app is showing. |
+| Android, selected text | Select text → **Lecture rapide** in the selection menu. |
+| Android, shared link | Share → **Lecture rapide**. If the site has a paywall, use "Open the page to log in" once: the in-app browser keeps its cookies. |
+| Chrome (desktop) | Extension: toolbar button, **Alt+Shift+R**, or right-click → "Lecture rapide". Reads the page as you see it, logins included. |
+| Web | Paste a text (or a public link) into the web app. |
 
-## Installation
+## Reading
 
-1. Clonez ce repository
-2. Ouvrez Chrome et allez à `chrome://extensions/`
-3. Activez le "Mode développeur"
-4. Cliquez sur "Charger l'extension non empaquetée"
-5. Sélectionnez le dossier de l'extension
+- **Tap** anywhere to pause. The text around the word appears, with the word
+  highlighted exactly where the flashing word was. Scroll freely.
+- **Tap a word** to move there, then **tap it again** (or ▶) to continue from it.
+- ▶ resumes from the **start of the current sentence**. You can turn this off in Aa.
+- While reading:
+  - **swipe ← →** to skip to the next or previous sentence;
+  - **drag ↑ ↓** to change the speed.
+- The scrubber at the bottom jumps anywhere. "Back to my position" brings you back after scrolling away.
+- Keyboard:
 
-## Utilisation
+  | Key | Action |
+  |---|---|
+  | `Space` | Pause / read |
+  | `←` `→` | Previous / next sentence |
+  | `Shift` + `←` `→` | Previous / next word |
+  | `↑` `↓` | Speed |
+  | `Esc` | Pause, then close |
 
-1. Naviguez vers un article (site d'actualités, Wikipedia, blog)
-2. Cliquez sur l'icône de l'extension
-3. L'article est automatiquement extrait et la lecture commence
+- Your position in each text is remembered.
 
-**Ou** sélectionnez du texte manuellement, puis cliquez sur l'extension pour lire uniquement cette sélection.
+Timing:
+- Each word gets 60000/WPM ms, longer for long words and numbers.
+- There is a short pause after commas, and a longer one after sentences and paragraphs.
+- The first few words after starting are a little slower, so your eyes can lock on.
 
-## Raccourcis clavier
+## Install
 
-| Touche | Action |
-|--------|--------|
-| `Espace` | Pause / Reprendre |
-| `←` | Reculer de 5 mots |
-| `→` | Avancer de 5 mots |
-| `↑` | Augmenter la vitesse (+25 MPM) |
-| `↓` | Diminuer la vitesse (-25 MPM) |
-| `Échap` | Arrêter |
+Every push to `main` builds a release: **[Releases → latest](https://github.com/valentinbayard/rsvp-speed-reader/releases/latest)**.
 
-## Paramètres
+- **Android:**
+  1. Download `lecture-rapide.apk` on the phone and open it.
+  2. In the app, tap **Activer**, then switch on "Lecture rapide · lire l'écran" and its shortcut.
+  3. On Android 13 and later, sideloaded apps need one extra step: *App info → ⋮ → Allow restricted settings*.
+- **Chrome:**
+  1. Unzip `lecture-rapide-extension.zip`.
+  2. Open `chrome://extensions` and enable developer mode.
+  3. Click "Load unpacked" and pick the unzipped folder.
 
-- **Vitesse de lecture** : 100-1000 mots par minute (défaut : 550)
-- **Compte à rebours** : 0-3 secondes avant le démarrage
-- **Pause sur ponctuation** : Délai supplémentaire après les virgules et points
-- **Temps supplémentaire pour mots longs** : Affiche les mots longs plus longtemps
+### Signing the APK (so updates install over the previous version)
 
-## Structure du projet
+By default, CI signs the APK with a throwaway key. Each new build then has to
+replace the old one by uninstalling first (your reading history is lost). To
+keep a stable key:
+
+1. Create a key once:
+   `keytool -genkeypair -keystore release.jks -alias rsvp -keyalg RSA -keysize 2048 -validity 36500`
+2. Add these repository secrets (Settings → Secrets and variables → Actions):
+   - `RSVP_KEYSTORE_BASE64`: the output of `base64 -w0 release.jks`
+   - `RSVP_KEYSTORE_PASSWORD`
+   - `RSVP_KEY_ALIAS` (`rsvp`)
+   - `RSVP_KEY_PASSWORD`
+
+## Layout
 
 ```
-Fast_reader/
-├── manifest.json          # Configuration de l'extension
-├── background.js          # Service worker
-├── content/
-│   ├── content.js         # Script principal
-│   ├── content.css        # Styles pour l'overlay
-│   └── rsvp-engine.js     # Moteur RSVP
-├── popup/
-│   ├── popup.html         # Interface du popup
-│   ├── popup.js           # Logique du popup
-│   └── popup.css          # Styles du popup
-├── icons/                 # Icônes de l'extension
-└── lib/
-    └── Readability.js     # Mozilla Readability
+web/         The reader, shared by all three apps (vanilla JS modules, no build step)
+  core/        tokenizer, timing, playback engine, storage, page extraction
+  reader/      the reader UI (shadow DOM component)
+android/     Kotlin app: WebView host, accessibility service, share/selection, login browser
+extension/   Chrome MV3 extension (run `npm run build:extension` before loading it)
+worker/      Cloudflare Worker that fetches public links for the web version
+tests/       unit tests (node:test), browser tests (Playwright)
 ```
 
-## Crédits
+## Development
 
-- [Readability.js](https://github.com/mozilla/readability) par Mozilla (Licence Apache 2.0)
+```sh
+npm test                       # core unit tests
+npm run serve                  # web app on http://localhost:8080
+node tests/e2e.mjs             # reader in headless Chromium (needs playwright)
+node tests/extension.mjs       # extension in Chromium
+cd android && ./gradlew assembleRelease testReleaseUnitTest
+```
 
-## Licence
-
-MIT
+The previous version of the project is kept on the `old` branch.

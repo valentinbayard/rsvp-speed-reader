@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The reading band: two rules, two ticks, and the red focus point. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#B4AA9B" android:pathData="M18,38h72v1.8h-72z" />
+    <path android:fillColor="#B4AA9B" android:pathData="M18,68.2h72v1.8h-72z" />
+    <path android:fillColor="#B4AA9B" android:pathData="M49.1,39.8h1.8v6h-1.8z" />
+    <path android:fillColor="#B4AA9B" android:pathData="M49.1,62.2h1.8v6h-1.8z" />
+    <path android:fillColor="#171512" android:pathData="M33,51.5h12.5a2.5,2.5 0,0 1,0 5h-12.5a2.5,2.5 0,0 1,0 -5z" />
+    <path android:fillColor="#171512" android:pathData="M55,51.5h18.5a2.5,2.5 0,0 1,0 5h-18.5a2.5,2.5 0,0 1,0 -5z" />
+    <path android:fillColor="#A3232A" android:pathData="M50,54m-3.6,0a3.6,3.6 0,1 1,7.2 0a3.6,3.6 0,1 1,-7.2 0" />
+</vector>

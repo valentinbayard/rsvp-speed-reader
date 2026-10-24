@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Reader (unit + browser tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+      - name: Install Playwright
+        run: npm install --no-save playwright@1.56.1 && npx playwright install --with-deps chromium
+      - run: node scripts/build-extension.mjs
+      - run: node tests/e2e.mjs test-results
+      - run: xvfb-run -a node tests/extension.mjs test-results
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: test-results/
+
+  android:
+    name: Android app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Signing key (optional)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RSVP_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "RSVP_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No RSVP_KEYSTORE_BASE64 secret: the APK is signed with a throwaway key (uninstall before installing a new build)."
+          fi
+      - name: Unit tests and APK
+        working-directory: android
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          RSVP_KEYSTORE_PASSWORD: ${{ secrets.RSVP_KEYSTORE_PASSWORD }}
+          RSVP_KEY_ALIAS: ${{ secrets.RSVP_KEY_ALIAS }}
+          RSVP_KEY_PASSWORD: ${{ secrets.RSVP_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon testReleaseUnitTest assembleRelease
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk lecture-rapide.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lecture-rapide-apk
+          path: lecture-rapide.apk
+
+  release:
+    name: Publish latest build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [web, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: lecture-rapide-apk
+      - name: Package the Chrome extension
+        run: |
+          node scripts/build-extension.mjs
+          (cd extension && zip -qr ../lecture-rapide-extension.zip .)
+      - name: Move the "latest" tag to this commit
+        run: |
+          git tag -f latest
+          git push -f origin latest
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Lecture rapide — dernière version
+          make_latest: true
+          body: |
+            Version ${{ github.run_number }} (${{ github.sha }}).
+
+            **Android** : téléchargez `lecture-rapide.apk` sur le téléphone et ouvrez-le (autorisez l'installation depuis le navigateur si Android le demande).
+            **Chrome** : décompressez `lecture-rapide-extension.zip`, puis `chrome://extensions` → Mode développeur → « Charger l'extension non empaquetée ».
+          files: |
+            lecture-rapide.apk
+            lecture-rapide-extension.zip

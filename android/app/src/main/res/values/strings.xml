@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Lecture rapide</string>
+    <string name="share_label">Lecture rapide</string>
+    <string name="process_text_label">Lecture rapide</string>
+    <string name="a11y_label">Lecture rapide · lire l’écran</string>
+    <string name="a11y_description">Touchez le bouton d’accessibilité dans n’importe quelle application pour lire en lecture rapide le texte affiché (article, page web, e-mail…). Le texte n’est lu qu’à votre demande et ne quitte jamais le téléphone.</string>
+    <string name="tile_label">Lecture rapide</string>
+    <string name="capturing">Lecture de l’écran…</string>
+    <string name="nothing_found">Aucun texte à lire sur cet écran</string>
+    <string name="open_article_first">Ouvrez d’abord l’article à lire, puis touchez le bouton</string>
+    <string name="enable_service_first">Activez d’abord le service dans l’application</string>
+    <string name="browser_read">Lire</string>
+    <string name="browser_hint">Connectez-vous si besoin, puis touchez « Lire »</string>
+    <string name="browser_no_text">Pas assez de texte sur cette page</string>
+</resources>
