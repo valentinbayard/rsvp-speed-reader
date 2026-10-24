@@ -1,4 +1,4 @@
-import { tokenDuration, rampFactor, clampWpm } from './timing.js';
+import { tokenDuration, rampFactor, clampWpm, wordScale } from './timing.js';
 import { sentenceStartOf } from './text.js';
 
 /**
@@ -9,6 +9,7 @@ import { sentenceStartOf } from './text.js';
 export class Engine {
   constructor(tokens, { wpm = 400, punctuation = 1, smartResume = true, now, setTimer, clearTimer } = {}) {
     this.tokens = tokens;
+    this.scale = wordScale(tokens);
     this.index = 0;
     this.wpm = clampWpm(wpm);
     this.punctuation = punctuation;
@@ -97,7 +98,7 @@ export class Engine {
   }
 
   durationOf(i) {
-    return tokenDuration(this.tokens[i], this.wpm, this.punctuation) * rampFactor(this._sinceStart, this._rampLength);
+    return tokenDuration(this.tokens[i], this.wpm, this.punctuation, this.scale) * rampFactor(this._sinceStart, this._rampLength);
   }
 
   _schedule(shownAt) {

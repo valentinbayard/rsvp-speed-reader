@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { toParagraphs, tokenize, orpIndex, previousSentence, nextSentence, tokenAt, sentenceStartOf } from '../web/core/text.js';
-import { tokenDuration, remainingTimer, clampWpm } from '../web/core/timing.js';
+import { tokenDuration, tokenBeats, wordScale, remainingTimer, clampWpm } from '../web/core/timing.js';
 import { Engine } from '../web/core/engine.js';
 
 const words = (s) => tokenize(toParagraphs(s)).map((t) => t.text);
@@ -16,10 +16,21 @@ test('French typography: lone punctuation sticks to its word', () => {
   assert.deepEqual(words('Il dit : « Bonjour ! » Puis rien ?'), ['Il', 'dit :', '« Bonjour ! »', 'Puis', 'rien ?']);
 });
 
-test('long words, hyphenated or not, are shown whole', () => {
-  assert.deepEqual(words('anti-constitutionnellement Saint-Germain-des-Prés'), ['anti-constitutionnellement', 'Saint-Germain-des-Prés']);
-  assert.deepEqual(words('Jean-Pierre est arrivé'), ['Jean-Pierre', 'est', 'arrivé']);
-  assert.deepEqual(words('de 1990-2000 et -5'), ['de', '1990-2000', 'et', '-5']);
+test('words of more than 13 letters are split in even pieces, at their hyphens if they have some', () => {
+  const fr = (s) => tokenize(toParagraphs(s), { lang: 'fr' }).map((t) => t.text);
+  assert.deepEqual(fr('anticonstitutionnellement et particulièrement'), ['anticonstitu-', 'tionnellement', 'et', 'particu-', 'lièrement']);
+  assert.deepEqual(fr('Saint-Germain-des-Prés, anti-constitutionnellement.'), ['Saint-Germain-', 'des-Prés,', 'anti-constitu-', 'tionnellement.']);
+  assert.deepEqual(fr('Jean-Pierre est arrivé'), ['Jean-Pierre', 'est', 'arrivé']);
+  assert.deepEqual(fr('de 1990-2000 et -5, https://exemple.fr/developpement'), ['de', '1990-2000', 'et', '-5,', 'https://exemple.fr/developpement']);
+  assert.deepEqual(tokenize(['internationalization'], { lang: 'en' }).map((t) => t.text), ['internation-', 'alization']);
+  assert.deepEqual(tokenize(['Donaudampfschifffahrtsgesellschaft'], { lang: null }).map((t) => t.text), ['Donaudampf-', 'schifffahrts-', 'gesellschaft']);
+  for (const t of tokenize(toParagraphs('Les approvisionnements gouvernementaux sont considérablement réorganisés.'))) {
+    assert.ok(t.text.replace(/[^\p{L}]/gu, '').length <= 13, t.text);
+  }
+});
+
+test('a number and its unit are one word', () => {
+  assert.deepEqual(words('à 12 km, 3 h et 20 °C. Le m est'), ['à', '12\u202Fkm,', '3\u202Fh', 'et', '20\u202F°C.', 'Le', 'm', 'est']);
 });
 
 test('numbers grouped with spaces stay whole; currency sticks to its number', () => {
@@ -27,9 +38,9 @@ test('numbers grouped with spaces stay whole; currency sticks to its number', ()
 });
 
 test('token offsets point back into the paragraph', () => {
-  const paras = toParagraphs('« Bonjour ! » dit-il. Ensuite, il partit.');
+  const paras = toParagraphs('« Bonjour ! » dit-il. Ensuite, particulièrement, il partit.');
   for (const t of tokenize(paras)) {
-    assert.equal(paras[t.p].slice(t.start, t.end).replace(/\s+/g, ' '), t.text);
+    assert.equal(paras[t.p].slice(t.start, t.end).replace(/\s+/g, '\u202F'), t.text.replace(/(?<=\p{L})-$/u, ''));
   }
 });
 
@@ -91,12 +102,23 @@ test('tokenAt maps a character offset to a token', () => {
   assert.equal(tokenAt(toks, 1, 11), 4);
 });
 
-test('timing: punctuation and long words take longer; remaining time matches', () => {
-  const toks = tokenize(['Le chat, extraordinairement calme. Fin']);
-  const d = toks.map((t) => tokenDuration(t, 300, 1));
-  assert.ok(d[1] > d[0]);
-  assert.ok(d[2] > d[0]);
-  assert.ok(d[3] > d[2]);
+test('timing follows the patent: word lengths, sentence pauses, average word = 60000 / wpm', () => {
+  const beats = (s) => tokenize([s]).map((t) => tokenBeats(t));
+  const [short, seven, eight] = beats('chat lecture lectures');
+  assert.equal(short.word, 1);
+  assert.equal(seven.word, 1);
+  assert.equal(eight.word, 1.3);
+  assert.equal(beats('Un deux trois. Quatre cinq six sept huit. Fin')[2].pause, 1, 'short sentence');
+  assert.equal(beats('Un deux trois. Quatre cinq six sept huit neuf dix onze. Fin')[10].pause, 2.2, '8 words');
+  assert.equal(beats(`${'mot '.repeat(23)}fin. Après`)[23].pause, 3.3, '24 words');
+  assert.equal(beats('Le chat, dit-il')[1].pause, 0.6, 'comma');
+  assert.equal(beats('Fin.')[0].pause, 2.2, 'paragraph end');
+
+  const toks = tokenize(['Le chat, extraordinairement calme. Fin de la phrase ici']);
+  const scale = wordScale(toks);
+  const avgWord = toks.reduce((a, t) => a + tokenBeats(t).word, 0) * scale / toks.length;
+  assert.ok(Math.abs(avgWord - 1) < 1e-9);
+  const d = toks.map((t) => tokenDuration(t, 300, 1, scale));
   const rem = remainingTimer(toks);
   assert.ok(Math.abs(rem(0, 300, 1) - d.reduce((a, b) => a + b)) < 1e-6);
   assert.equal(clampWpm(5000), 1200);

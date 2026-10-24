@@ -4,6 +4,8 @@
 // paused "context" view can show the original text and map a tap on any
 // character back to a token (and vice versa).
 
+import { hyphenationPoints } from './hyphenate.js';
+
 const OPENING = /^[«“‘"'(\[{¿¡—–-]+$/u;
 const CLOSING = /^[»”’"')\]}.,;:!?…%‰€$£¥]+$/u;
 const LETTER = /[\p{L}\p{N}]/u;
@@ -15,6 +17,14 @@ const ELIDED = /^[(\[](?:…|\.{3})[)\]][^\p{L}\p{N}]*$/u;
 // Digit groups split by a (narrow no-break) space are one number: 12 000, 1 500 000.
 const THOUSANDS_HEAD = /^[^\p{L}\p{N}]*[+\-−]?\d{1,3}(?:\s\d{3})*$/u;
 const THOUSANDS_GROUP = /^\d{3}(?!\d)/u;
+const UNITS = new Set(
+  'km m cm mm µm kg g mg t l L ml cl dl h min s ms °C °F ° km/h m² m³ km² ha Mo Go Ko To ko kWh Wh W kW MW GW V Hz kHz MHz GHz'.split(' '),
+);
+const HYPHEN = /[-‐‑]/u;
+
+// Words longer than this are split (Spritz's patent, US 8,903,174: words of up
+// to 13 characters are recognised in a single fixation).
+export const MAX_LETTERS = 13;
 
 // Lower-cased abbreviations that end with a dot but do not end a sentence.
 const ABBREVIATIONS = new Set([
@@ -25,6 +35,12 @@ const ABBREVIATIONS = new Set([
   'e.g', 'i.e', 'approx', 'janv', 'févr', 'avr', 'juil', 'sept', 'oct', 'nov', 'déc',
   'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'dec',
 ]);
+
+// Frequent function words, to tell French from English for hyphenation.
+const STOPWORDS = {
+  fr: new Set('le la les de des du un une et est en que qui dans pour pas sur au aux ce il elle ne se par plus avec son sont'.split(' ')),
+  en: new Set('the of and to in is that it for was are with be this by at have from not his but they which'.split(' ')),
+};
 
 /**
  * Splits pasted / extracted text into clean paragraphs.
@@ -44,22 +60,38 @@ function cleanLine(s) {
   return String(s).normalize('NFC').replace(/[ \t\n\f\v]+/g, ' ').trim();
 }
 
+/** 'fr', 'en' or null, from the share of very common words. */
+export function detectLang(paragraphs) {
+  const counts = { fr: 0, en: 0 };
+  let n = 0;
+  outer: for (const para of paragraphs) {
+    for (const [w] of para.toLowerCase().matchAll(/\p{L}+/gu)) {
+      for (const lang in counts) if (STOPWORDS[lang].has(w)) counts[lang]++;
+      if (++n >= 3000) break outer;
+    }
+  }
+  const best = counts.fr >= counts.en ? 'fr' : 'en';
+  return counts[best] >= Math.max(2, n * 0.05) ? best : null;
+}
+
 /**
  * Tokenizes paragraphs into words to flash, one by one.
  * @param {string[]} paragraphs
+ * @param {{lang?: string|null}} [opts] language for hyphenation (detected when omitted)
  * @returns {Token[]}
  *
  * @typedef {Object} Token
- * @property {string} text   what is displayed
+ * @property {string} text   what is displayed (a split word's first pieces end with a hyphen)
  * @property {number} p      paragraph index
  * @property {number} start  char offset in paragraph (inclusive)
  * @property {number} end    char offset in paragraph (exclusive)
  * @property {boolean} sentenceStart
  * @property {boolean} paragraphEnd
  * @property {'sentence'|'clause'|null} pause  punctuation that ends the token
+ * @property {number} [sentenceWords]  on the last token of a sentence or paragraph: its number of tokens
  * @property {number} orp    index into `text` of the focus letter
  */
-export function tokenize(paragraphs) {
+export function tokenize(paragraphs, { lang = detectLang(paragraphs) } = {}) {
   const tokens = [];
   paragraphs.forEach((para, p) => {
     const runs = [];
@@ -79,6 +111,10 @@ export function tokenize(paragraphs) {
       } else if (prev && run.start - prev.end === 1 && THOUSANDS_GROUP.test(s) && THOUSANDS_HEAD.test(para.slice(prev.start, prev.end))) {
         prev.end = run.end;
         continue;
+      } else if (prev && /\d$/u.test(para.slice(prev.start, prev.end)) && UNITS.has(s.replace(/[.,;:!?…)\]»”’"']+$/u, ''))) {
+        // A number and its unit are read together: 12 km, 3 h, 20 °C.
+        prev.end = run.end;
+        continue;
       }
       if (CLOSING.test(s) && merged.length && !OPENING.test(s)) {
         prev.end = run.end;
@@ -95,21 +131,27 @@ export function tokenize(paragraphs) {
       else merged.push(pendingOpen);
     }
 
+    const pieces = merged.flatMap((run) => splitLong(para, run, lang));
+
     let sentenceStart = true;
-    merged.forEach((run, i) => {
+    let sentenceWords = 0;
+    pieces.forEach((run, i) => {
       const raw = para.slice(run.start, run.end);
-      const text = raw.replace(/\s+/gu, '\u202F');
-      const isLast = i === merged.length - 1;
-      const next = isLast ? '' : para.slice(merged[i + 1].start, merged[i + 1].end);
+      const text = raw.replace(/\s+/gu, '\u202F') + (run.hyphen ? '-' : '');
+      const isLast = i === pieces.length - 1;
+      const next = isLast ? '' : para.slice(pieces[i + 1].start, pieces[i + 1].end);
       let pause = null;
-      if (SENTENCE_END.test(raw) && !ELIDED.test(raw)) {
-        const abbr = abbreviation(raw);
-        // « Viens ! » dit-il : a lower-case word after the stop continues the sentence.
-        if (!abbr) pause = /^[^\p{L}\p{N}]*\p{Ll}/u.test(next) ? 'clause' : 'sentence';
-        else if (abbr === 'maybe' && (isLast || /^[^\p{L}\p{N}]*\p{Lu}/u.test(next))) pause = 'sentence';
+      if (!run.joined) {
+        if (SENTENCE_END.test(raw) && !ELIDED.test(raw)) {
+          const abbr = abbreviation(raw);
+          // « Viens ! » dit-il : a lower-case word after the stop continues the sentence.
+          if (!abbr) pause = /^[^\p{L}\p{N}]*\p{Ll}/u.test(next) ? 'clause' : 'sentence';
+          else if (abbr === 'maybe' && (isLast || /^[^\p{L}\p{N}]*\p{Lu}/u.test(next))) pause = 'sentence';
+        }
+        if (!pause && (CLAUSE_END.test(raw) || CLOSE_BRACKET.test(raw) || ELIDED.test(raw) || run.breakAfter)) pause = 'clause';
       }
-      if (!pause && (CLAUSE_END.test(raw) || CLOSE_BRACKET.test(raw) || ELIDED.test(raw) || run.breakAfter)) pause = 'clause';
-      tokens.push({
+      sentenceWords++;
+      const token = {
         text,
         p,
         start: run.start,
@@ -118,11 +160,86 @@ export function tokenize(paragraphs) {
         paragraphEnd: isLast,
         pause,
         orp: orpIndex(text),
-      });
+      };
+      if (pause === 'sentence' || isLast) {
+        token.sentenceWords = sentenceWords;
+        sentenceWords = 0;
+      }
+      tokens.push(token);
       sentenceStart = pause === 'sentence';
     });
   });
   return tokens;
+}
+
+/**
+ * Splits a word of more than MAX_LETTERS letters into pieces that can each be
+ * read at a glance: at its own hyphens if it has some, otherwise at syllable
+ * breaks, with a hyphen after each piece but the last. Pieces are as even as
+ * possible.
+ */
+function splitLong(para, run, lang) {
+  const s = para.slice(run.start, run.end);
+  if (letterCount(s) <= MAX_LETTERS || /\d|[/@]|\.\p{L}/u.test(s)) return [run];
+
+  const chars = [];
+  for (let k = 0; k < s.length; ) {
+    const c = String.fromCodePoint(s.codePointAt(k));
+    chars.push({ c, off: k, letter: /\p{L}/u.test(c) });
+    k += c.length;
+  }
+  // lettersBefore[k]: letters in chars[0, k)
+  const lettersBefore = [0];
+  chars.forEach((ch, k) => lettersBefore.push(lettersBefore[k] + (ch.letter ? 1 : 0)));
+
+  // Candidate breaks, as indexes into `chars` where a new piece starts.
+  const breaks = new Map();
+  for (let k = 1; k < chars.length - 1; k++) {
+    if (HYPHEN.test(chars[k].c) && chars[k + 1].letter && lettersBefore[k] > 0) breaks.set(k + 1, 'hyphen');
+  }
+  for (let k = 0; k < chars.length; ) {
+    if (!chars[k].letter) {
+      k++;
+      continue;
+    }
+    let e = k;
+    while (e < chars.length && chars[e].letter) e++;
+    const word = chars.slice(k, e).map((ch) => ch.c).join('');
+    for (const pt of hyphenationPoints(word, lang)) if (!breaks.has(k + pt)) breaks.set(k + pt, 'syllable');
+    k = e;
+  }
+  if (!breaks.size) return [run];
+
+  // Fewest pieces of at most MAX_LETTERS letters, as even as possible,
+  // preferring the word's own hyphens.
+  const points = [0, ...[...breaks.keys()].sort((a, b) => a - b), chars.length];
+  const cost = (from, to) => {
+    const n = lettersBefore[points[to]] - lettersBefore[points[from]];
+    return 30 + 0.1 * n * n + (n > MAX_LETTERS ? 100 * (n - MAX_LETTERS) ** 2 : 0) + (n < 3 ? 1000 : 0)
+      + (breaks.get(points[to]) === 'syllable' ? 5 : 0);
+  };
+  const best = [{ cost: 0, from: -1 }];
+  for (let j = 1; j < points.length; j++) {
+    best[j] = { cost: Infinity, from: 0 };
+    for (let i = 0; i < j; i++) {
+      const c = best[i].cost + cost(i, j);
+      if (c < best[j].cost) best[j] = { cost: c, from: i };
+    }
+  }
+  const cuts = [];
+  for (let j = points.length - 1; j > 0; j = best[j].from) cuts.unshift(points[j]);
+  let from = 0;
+  return cuts.map((to, n) => {
+    const piece = {
+      start: run.start + chars[from].off,
+      end: to === chars.length ? run.end : run.start + chars[to].off,
+      joined: n < cuts.length - 1,
+      hyphen: breaks.get(to) === 'syllable',
+      breakAfter: n === cuts.length - 1 && run.breakAfter,
+    };
+    from = to;
+    return piece;
+  });
 }
 
 /** 'always' for known abbreviations and initials, 'maybe' for dotted acronyms (J.-C., S.A.). */

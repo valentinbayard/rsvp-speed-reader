@@ -42,9 +42,13 @@ It reads from anywhere:
 
 - Your position in each text is remembered.
 
-Timing:
-- Each word gets 60000/WPM ms, longer for long words and numbers.
-- There is a short pause after commas and around asides (dashes, parentheses), and a longer one after sentences and paragraphs. A stop followed by a lower-case word (« Viens ! » dit-il) does not end the sentence.
+Words and timing follow Spritz's patent ([US 8,903,174](https://patents.google.com/patent/US8903174B2)):
+- The red letter is the 1st letter of 1-letter words, the 2nd for 2–5 letters, the 3rd for 6–9, the 4th for 10–13 and the 5th beyond. Only letters and digits count, so `c'est` shows `c'[e]st`.
+- Words of more than 13 letters are split into even pieces, at their own hyphens or at syllable breaks (TeX hyphenation patterns for French and English, a simple syllable rule for other languages): `particu-` `lièrement`.
+- A number and its unit are shown together: `12 000 km`, `3 h`.
+- Words of more than 7 letters stay 1.3× longer, more than 13 letters 1.6×; numbers and names a little longer too. Times are scaled so the average word lasts exactly 60000/WPM ms.
+- After a sentence there is a pause of 1, 2.2 or 3.3 words' time depending on its length (up to 7 words, up to 22, more). Paragraphs end with a longer pause. Commas and asides (dashes, parentheses) get a short one, which the patent does not have.
+- A stop followed by a lower-case word (« Viens ! » dit-il) does not end the sentence.
 - The first few words after starting are a little slower, so your eyes can lock on.
 
 ## Install
