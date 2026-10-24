@@ -95,40 +95,20 @@ export function tokenize(paragraphs) {
       else merged.push(pendingOpen);
     }
 
-    // Long hyphenated compounds are easier to read in pieces.
-    const pieces = [];
-    for (const run of merged) {
-      const s = para.slice(run.start, run.end);
-      if (s.length > 13 && /\p{L}{3,}-\p{L}{3,}/u.test(s)) {
-        let from = 0;
-        const parts = s.split(/(?<=\p{L}{3,}-)(?=\p{L}{3,})/u);
-        for (const part of parts) {
-          pieces.push({ start: run.start + from, end: run.start + from + part.length, joined: true });
-          from += part.length;
-        }
-        pieces[pieces.length - 1].joined = false;
-        pieces[pieces.length - 1].breakAfter = run.breakAfter;
-      } else {
-        pieces.push(run);
-      }
-    }
-
     let sentenceStart = true;
-    pieces.forEach((run, i) => {
+    merged.forEach((run, i) => {
       const raw = para.slice(run.start, run.end);
       const text = raw.replace(/\s+/gu, '\u202F');
-      const isLast = i === pieces.length - 1;
-      const next = isLast ? '' : para.slice(pieces[i + 1].start, pieces[i + 1].end);
+      const isLast = i === merged.length - 1;
+      const next = isLast ? '' : para.slice(merged[i + 1].start, merged[i + 1].end);
       let pause = null;
-      if (!run.joined) {
-        if (SENTENCE_END.test(raw) && !ELIDED.test(raw)) {
-          const abbr = abbreviation(raw);
-          // « Viens ! » dit-il : a lower-case word after the stop continues the sentence.
-          if (!abbr) pause = /^[^\p{L}\p{N}]*\p{Ll}/u.test(next) ? 'clause' : 'sentence';
-          else if (abbr === 'maybe' && (isLast || /^[^\p{L}\p{N}]*\p{Lu}/u.test(next))) pause = 'sentence';
-        }
-        if (!pause && (CLAUSE_END.test(raw) || CLOSE_BRACKET.test(raw) || ELIDED.test(raw) || run.breakAfter)) pause = 'clause';
+      if (SENTENCE_END.test(raw) && !ELIDED.test(raw)) {
+        const abbr = abbreviation(raw);
+        // « Viens ! » dit-il : a lower-case word after the stop continues the sentence.
+        if (!abbr) pause = /^[^\p{L}\p{N}]*\p{Ll}/u.test(next) ? 'clause' : 'sentence';
+        else if (abbr === 'maybe' && (isLast || /^[^\p{L}\p{N}]*\p{Lu}/u.test(next))) pause = 'sentence';
       }
+      if (!pause && (CLAUSE_END.test(raw) || CLOSE_BRACKET.test(raw) || ELIDED.test(raw) || run.breakAfter)) pause = 'clause';
       tokens.push({
         text,
         p,

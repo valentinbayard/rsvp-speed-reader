@@ -16,8 +16,8 @@ test('French typography: lone punctuation sticks to its word', () => {
   assert.deepEqual(words('Il dit : « Bonjour ! » Puis rien ?'), ['Il', 'dit :', '« Bonjour ! »', 'Puis', 'rien ?']);
 });
 
-test('long hyphenated compounds are split, short ones and numbers are kept', () => {
-  assert.deepEqual(words('anti-constitutionnellement'), ['anti-', 'constitutionnellement']);
+test('long words, hyphenated or not, are shown whole', () => {
+  assert.deepEqual(words('anti-constitutionnellement Saint-Germain-des-Prés'), ['anti-constitutionnellement', 'Saint-Germain-des-Prés']);
   assert.deepEqual(words('Jean-Pierre est arrivé'), ['Jean-Pierre', 'est', 'arrivé']);
   assert.deepEqual(words('de 1990-2000 et -5'), ['de', '1990-2000', 'et', '-5']);
 });
