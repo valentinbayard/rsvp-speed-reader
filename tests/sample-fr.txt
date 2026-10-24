@@ -2,8 +2,14 @@ La lecture rapide n'est pas une course
 
 Depuis quelques années, les méthodes de lecture rapide fleurissent sur les réseaux sociaux. Leur promesse est simple : lire deux à trois fois plus vite, sans rien perdre du sens. « C'est possible, à condition de ne pas tricher », explique Marie Dupont, chercheuse en sciences cognitives à l'université de Lyon.
 
+Un mot à la fois
+
 La technique dite RSVP, pour Rapid Serial Visual Presentation, consiste à afficher les mots un par un, au même endroit de l'écran. L'œil n'a plus besoin de se déplacer : il reste fixé sur un point précis, légèrement à gauche du centre du mot. Ce point, appelé point de reconnaissance optimal, est souvent mis en couleur.
 
+Ce que disent les études
+
 Les études publiées depuis 2014 montrent pourtant des résultats contrastés. Au-delà de 500 mots par minute, la compréhension baisse nettement ; en dessous, elle reste comparable à une lecture classique. Le principal défaut de la méthode tient à l'impossibilité de revenir en arrière, ce que les lecteurs font naturellement, sans même s'en rendre compte, environ une fois toutes les dix fixations.
+
+Revenir en arrière
 
 C'est précisément ce que cherchent à corriger les nouvelles applications : une pause d'un simple geste, et le texte réapparaît autour du mot, pour se resituer. Puis la lecture reprend, au début de la phrase.

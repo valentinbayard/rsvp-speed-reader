@@ -1,6 +1,7 @@
 import { Engine } from '../core/engine.js';
 import { tokenize, previousSentence, nextSentence, paragraphStart } from '../core/text.js';
 import { remainingTimer, WPM_STEP } from '../core/timing.js';
+import { resolveHeadings, buildSections, sectionAt } from '../core/sections.js';
 import { t } from '../core/i18n.js';
 
 const BASE = new URL('..', import.meta.url).href;
@@ -11,6 +12,7 @@ const ICONS = {
   back: '<svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 3v4.5h4.5"/><path d="M10.5 9.5v5l3.5-2.5z" fill="currentColor"/></svg>',
   fwd: '<svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 3v4.5h-4.5"/><path d="M10 9.5v5l3.5-2.5z" fill="currentColor"/></svg>',
   up: '<svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
+  toc: '<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg>',
 };
 
 // Fonts and styles are added through APIs that page Content-Security-Policies
@@ -70,6 +72,9 @@ export function createReader(host, opts) {
   const tokens = tokenize(doc.paragraphs);
   if (!tokens.length) throw new Error('empty text');
   const remaining = remainingTimer(tokens);
+  const headingList = resolveHeadings(doc.paragraphs, doc.headings);
+  const sections = buildSections(doc.paragraphs, tokens, headingList, t('sectionStart'));
+  const hasToc = sections.length >= 2;
   const engine = new Engine(tokens, {
     wpm: settings.wpm,
     punctuation: settings.punctuation,
@@ -91,6 +96,7 @@ export function createReader(host, opts) {
     <div class="context" part="context"><div class="article"><div class="cursor"></div></div></div>
     <div class="stage">
       <div class="band"><div class="word" aria-live="off"></div></div>
+      <div class="section-label"></div>
       <div class="lead-in"></div>
       <div class="speed"></div>
       <div class="flash"></div>
@@ -102,13 +108,14 @@ export function createReader(host, opts) {
     <div class="toast"></div>
     <div class="topbar">
       <button class="icon-btn" data-act="close" aria-label="${t('close')}">${ICONS.close}</button>
-      <div class="title"></div>
+      <button class="title" ${hasToc ? 'data-act="toc"' : 'disabled'}><span class="doc-title"></span><span class="sec-title"></span></button>
+      ${hasToc ? `<button class="icon-btn toc-btn" data-act="toc" aria-label="${t('contents')}">${ICONS.toc}</button>` : ''}
       <button class="icon-btn text" data-act="settings" aria-label="${t('settings')}">Aa</button>
     </div>
     <div class="controls"><div class="controls-inner">
       <div class="scrub">
         <span class="pct"></span>
-        <input type="range" min="0" step="1" aria-label="Position">
+        <div class="track"><input type="range" min="0" step="1" aria-label="Position"><div class="ticks"></div></div>
         <span class="left"></span>
       </div>
       <div class="buttons">
@@ -132,8 +139,10 @@ export function createReader(host, opts) {
         <button class="btn primary" data-act="close">${t('close')}</button>
       </div>
     </div></div>
+    <nav class="toc-dock" aria-label="${t('contents')}"></nav>
     <div class="scrim" data-act="sheet-close"></div>
-    <div class="sheet" role="dialog" aria-label="${t('settings')}"></div>`;
+    <div class="sheet settings-sheet" role="dialog" aria-label="${t('settings')}"></div>
+    <div class="sheet toc-sheet" role="dialog" aria-label="${t('contents')}"></div>`;
   shadow.appendChild(root);
 
   const $ = (s) => root.querySelector(s);
@@ -154,13 +163,18 @@ export function createReader(host, opts) {
   const pctEl = $('.scrub .pct');
   const leftEl = $('.scrub .left');
   const speedVal = $('.speed-ctl .val');
-  const sheet = $('.sheet');
-  $('.topbar .title').textContent = doc.title || '';
+  const sheet = $('.settings-sheet');
+  const tocSheet = $('.toc-sheet');
+  const tocDock = $('.toc-dock');
+  const sectionLabel = $('.section-label');
+  const secTitle = $('.sec-title');
+  $('.doc-title').textContent = doc.title || '';
   scrub.max = String(tokens.length - 1);
+  root.classList.toggle('has-toc', hasToc);
 
   // ---------- Article (context view) ----------
 
-  const headings = new Set(doc.headings ?? []);
+  const headings = new Set(headingList);
   const paraEls = doc.paragraphs.map((text, i) => {
     const p = el(headings.has(i) ? 'h2' : 'p');
     p.dataset.p = String(i);
@@ -310,6 +324,7 @@ export function createReader(host, opts) {
 
   engine.on('word', (i) => {
     maxIndex = Math.max(maxIndex, i);
+    updateSection(i);
     if (state === 'playing' || state === 'ready') renderWord(i);
     else if (state === 'paused') {
       placeCursor();
@@ -340,6 +355,7 @@ export function createReader(host, opts) {
   engine.on('wpm', () => {
     renderSpeed();
     renderProgress();
+    renderToc();
     settings.wpm = engine.wpm;
     opts.onSettings?.({ ...settings });
   });
@@ -352,6 +368,7 @@ export function createReader(host, opts) {
       setTimeout(() => state === 'paused' && toast(t('pausedHint'), 3500), 250);
     }
     renderProgress();
+    renderToc();
     // Layout must be up to date before measuring.
     requestAnimationFrame(() => {
       placeCursor();
@@ -422,6 +439,94 @@ export function createReader(host, opts) {
       <div><b>${words.toLocaleString()}</b><span>${t('wordsRead')}</span></div>
       <div><b>${time}</b><span>${t('timeSpent')}</span></div>
       <div><b>${avg}</b><span>${t('avgSpeed')}</span></div>`;
+  }
+
+  // ---------- Sections (table of contents) ----------
+
+  let currentSection = -1;
+  function updateSection(i, force = false) {
+    if (!hasToc) return;
+    const k = sectionAt(sections, i);
+    if (k === currentSection && !force) return;
+    const changed = currentSection !== -1 && k !== currentSection;
+    currentSection = k;
+    const title = sections[k].title;
+    sectionLabel.textContent = title;
+    secTitle.textContent = title === doc.title ? `${k + 1}/${sections.length}` : `${k + 1}/${sections.length} · ${title}`;
+    if (changed && state === 'playing') {
+      sectionLabel.classList.remove('pulse');
+      void sectionLabel.offsetWidth; // restart the animation
+      sectionLabel.classList.add('pulse');
+    }
+    renderToc();
+  }
+
+  function sectionMinutes(k) {
+    const end = k + 1 < sections.length ? sections[k + 1].index : tokens.length;
+    const ms = remaining(sections[k].index, engine.wpm, engine.punctuation) - (end < tokens.length ? remaining(end, engine.wpm, engine.punctuation) : 0);
+    return Math.round(ms / 60000);
+  }
+
+  function tocHtml() {
+    return `<ol class="toc-list">${sections
+      .map((sec, k) => {
+        const end = k + 1 < sections.length ? sections[k + 1].index : tokens.length;
+        const cls = k === currentSection ? 'current' : end - 1 <= maxIndex && k < currentSection ? 'done' : '';
+        const frac = k === currentSection ? (engine.index - sec.index) / Math.max(1, end - sec.index) : 0;
+        const m = sectionMinutes(k);
+        return `<li><button class="toc-item ${cls}" data-sec="${k}" ${k === currentSection ? 'aria-current="true"' : ''}>
+          <span class="n">${k + 1}</span>
+          <span class="t"></span>
+          <span class="d">${m < 1 ? '< 1' : m} min</span>
+          ${k === currentSection ? `<span class="bar"><i style="width:${Math.round(frac * 100)}%"></i></span>` : ''}
+        </button></li>`;
+      })
+      .join('')}</ol>`;
+  }
+
+  function fillToc(container, withHeader) {
+    container.innerHTML = (withHeader ? `<div class="grab"></div><h3>${t('contents')}</h3>` : `<h4>${t('contents')}</h4>`) + tocHtml();
+    container.querySelectorAll('.toc-item .t').forEach((span, k) => (span.textContent = sections[k].title));
+  }
+
+  let tocRaf = 0;
+  function renderToc() {
+    if (!hasToc) return;
+    // Only the visible lists need to be up to date; coalesce updates per frame.
+    cancelAnimationFrame(tocRaf);
+    tocRaf = requestAnimationFrame(() => {
+      if (sheetOpen === 'toc') fillToc(tocSheet, true);
+      if (state === 'paused') fillToc(tocDock, false);
+    });
+  }
+
+  function goToSection(k) {
+    closeSheet();
+    engine.seek(sections[k].index);
+    play();
+  }
+
+  function onTocClick(e) {
+    const b = e.target.closest?.('[data-sec]');
+    if (b) goToSection(Number(b.dataset.sec));
+  }
+  tocSheet.addEventListener('click', onTocClick);
+  tocDock.addEventListener('click', onTocClick);
+
+  function jumpSection(delta) {
+    if (!hasToc) return;
+    const k = sectionAt(sections, engine.index);
+    // "Previous" from the middle of a section goes back to its start first.
+    const target = delta < 0 && engine.index - sections[k].index > 3 ? k : Math.max(0, Math.min(sections.length - 1, k + delta));
+    jump(sections[target].index, delta < 0 ? '⟪' : '⟫');
+    if (state === 'ready') renderWord(engine.index);
+  }
+
+  if (hasToc) {
+    $('.ticks').innerHTML = sections
+      .slice(1)
+      .map((sec) => `<i style="--at:${sec.index / Math.max(1, tokens.length - 1)}"></i>`)
+      .join('');
   }
 
   // ---------- Wake lock (web) ----------
@@ -519,7 +624,8 @@ export function createReader(host, opts) {
 
   const actions = {
     close: () => opts.onClose?.(),
-    settings: openSheet,
+    settings: () => openSheet('settings'),
+    toc: () => (sheetOpen === 'toc' ? closeSheet() : openSheet('toc')),
     'sheet-close': closeSheet,
     play,
     prev: () => jump(previousSentence(tokens, engine.index)),
@@ -550,9 +656,11 @@ export function createReader(host, opts) {
     const k = e.key;
     let handled = true;
     if (sheetOpen) {
-      if (k === 'Escape') closeSheet();
+      if (k === 'Escape' || (k === 't' && sheetOpen === 'toc')) closeSheet();
       else handled = false;
-    } else if (k === ' ' || k === 'Spacebar' || k === 'k') {
+    } else if (k === 't' && hasToc) openSheet('toc');
+    else if (k === '[') jumpSection(-1);
+    else if (k === ']') jumpSection(1); else if (k === ' ' || k === 'Spacebar' || k === 'k') {
       if (e.target?.tagName === 'BUTTON' && k !== 'k') {
         handled = false;
       } else if (state === 'playing') pause();
@@ -595,11 +703,22 @@ export function createReader(host, opts) {
 
   // ---------- Settings sheet ----------
 
+  /** @type {false | 'settings' | 'toc'} */
   let sheetOpen = false;
-  function openSheet() {
+  function openSheet(which) {
+    clearTimeout(leadTimer);
+    leadEl.classList.remove('run');
     if (engine.isPlaying) engine.pause();
-    sheetOpen = true;
-    renderSheet();
+    sheetOpen = which;
+    if (which === 'toc') {
+      fillToc(tocSheet, true);
+      // Not scrollIntoView: it would also scroll the (overflow: hidden) reader itself.
+      requestAnimationFrame(() => {
+        const cur = tocSheet.querySelector('.current');
+        if (cur) tocSheet.scrollTop = cur.offsetTop - tocSheet.clientHeight / 2 + cur.offsetHeight / 2;
+      });
+    } else renderSheet();
+    root.dataset.sheet = which;
     root.classList.add('sheet-open');
   }
   function closeSheet() {
@@ -675,6 +794,7 @@ export function createReader(host, opts) {
   const start = Math.max(0, Math.min(tokens.length - 1, opts.position ?? 0));
   engine.seek(start);
   renderSpeed();
+  updateSection(start, true);
   hintEl.textContent = t(settings.autoStart && !opts.resumed ? 'tapHint' : 'tapToStart');
 
   const begin = () => {

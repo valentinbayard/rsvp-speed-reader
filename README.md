@@ -22,7 +22,12 @@ It reads from anywhere:
 - While reading:
   - **swipe ← →** to skip to the next or previous sentence;
   - **drag ↑ ↓** to change the speed.
-- The scrubber at the bottom jumps anywhere. "Back to my position" brings you back after scrolling away.
+- **Contents**:
+  - The ☰ button, or tapping the title, lists the article's sections, with the current one highlighted and the time each one takes. Tap a section to read from there.
+  - On wide screens the list stays beside the text while paused.
+  - While reading, the current section's name sits above the word.
+  - Section titles come from the page; for plain text they are guessed from short title-like lines.
+- The scrubber at the bottom (with a mark per section) jumps anywhere. "Back to my position" brings you back after scrolling away.
 - Keyboard:
 
   | Key | Action |
@@ -31,6 +36,8 @@ It reads from anywhere:
   | `←` `→` | Previous / next sentence |
   | `Shift` + `←` `→` | Previous / next word |
   | `↑` `↓` | Speed |
+  | `[` `]` | Previous / next section |
+  | `t` | Contents |
   | `Esc` | Pause, then close |
 
 - Your position in each text is remembered.

@@ -93,6 +93,30 @@ await page.keyboard.press('ArrowRight');
 await page.waitForTimeout(250);
 await shot('05-next-sentence');
 
+// Table of contents: open it, jump to a section, reading starts there.
+const sr = (fn, arg) => page.evaluate(fn, arg);
+await page.keyboard.press('t');
+await page.waitForTimeout(350);
+await shot('05b-contents');
+const toc = await sr(() =>
+  [...document.querySelector('#reader-host').shadowRoot.querySelectorAll('.toc-sheet .toc-item')].map((b) => ({
+    title: b.querySelector('.t').textContent,
+    current: b.classList.contains('current'),
+  })),
+);
+assert.deepEqual(toc.map((x) => x.title), ["La lecture rapide n'est pas une course", 'Un mot à la fois', 'Ce que disent les études', 'Revenir en arrière']);
+assert.equal(toc.findIndex((x) => x.current), 1, 'current section highlighted');
+await sr(() => document.querySelector('#reader-host').shadowRoot.querySelectorAll('.toc-sheet .toc-item')[2].click());
+await page.waitForTimeout(150);
+assert.equal(await state(), 'playing');
+assert.equal(await word(), 'Ce', 'starts at the section title');
+assert.equal(await sr(() => document.querySelector('#reader-host').shadowRoot.querySelector('.root').scrollTop), 0, 'reader itself never scrolls');
+assert.equal(await sr(() => document.querySelector('#reader-host').shadowRoot.querySelector('.section-label').textContent), 'Ce que disent les études');
+await page.waitForTimeout(700);
+await shot('05c-section-label');
+await page.keyboard.press(' ');
+await page.waitForTimeout(300);
+
 // Settings sheet, dark theme.
 await page.evaluate(() => document.querySelector('#reader-host').shadowRoot.querySelector('[data-act=settings]').click());
 await page.waitForTimeout(350);
@@ -117,6 +141,17 @@ await page.evaluate(() => document.querySelector('#reader-host').shadowRoot.quer
 await page.waitForTimeout(300);
 assert.equal(await page.isVisible('#library-section'), true);
 await shot('10-home-library');
+
+// Wide screen: the contents sit beside the text while paused.
+const wide = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+await wide.goto(url);
+await wide.fill('#input', fs.readFileSync('tests/sample-fr.txt', 'utf8'));
+await wide.click('#read');
+await wide.waitForTimeout(2500);
+await wide.keyboard.press(' ');
+await wide.waitForTimeout(400);
+assert.equal(await wide.evaluate(() => getComputedStyle(document.querySelector('#reader-host').shadowRoot.querySelector('.toc-dock')).visibility), 'visible');
+await wide.screenshot({ path: path.join(outDir, '11-wide-paused.png') });
 
 await browser.close();
 server.close();
