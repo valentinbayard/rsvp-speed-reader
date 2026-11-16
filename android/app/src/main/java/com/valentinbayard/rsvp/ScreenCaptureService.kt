@@ -14,8 +14,13 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * "Read this screen": when the user taps the accessibility button (or the
+ * "Read this screen": when the user triggers the service's shortcut (or the
  * quick settings tile), grab the text of the app in front and open the reader.
+ *
+ * The shortcut is chosen by the user in the system settings: the floating
+ * accessibility button, or holding both volume keys. Both arrive in
+ * [buttonCallback]. Keep `flagRequestAccessibilityButton`: without it, the
+ * volume-key shortcut would turn the service on and off instead.
  *
  * This is what makes paywalled articles readable: we read what the user's
  * own, logged-in app displays, instead of fetching the page again.

@@ -322,8 +322,9 @@ function renderAndroidSetup() {
     box.innerHTML = `
       <div class="ok"><span class="dot"></span><div>
         <h2>Lecture depuis les autres apps : activée</h2>
-        <p>Dans n’importe quelle app (journal, navigateur, mails…), touchez le <b>bouton d’accessibilité</b> pour lire l’écran en cours. Vous pouvez aussi sélectionner du texte puis choisir « Lecture rapide », ou partager un lien.</p>
-        <div class="row"><button class="ghost" data-a="settings">Réglages d’accessibilité</button></div>
+        <p>Dans n’importe quelle app (journal, navigateur, mails…), <b>maintenez les deux touches de volume</b> quelques secondes pour lire l’écran en cours. Vous pouvez aussi sélectionner du texte puis choisir « Lecture rapide », ou partager un lien.</p>
+        <p class="muted">Un bouton flottant à la place ? Dans « Réglages du raccourci », cochez <b>Maintenir les touches de volume</b> et décochez <b>Bouton d’accessibilité</b>.</p>
+        <div class="row"><button class="ghost" data-a="settings">Réglages du raccourci</button></div>
       </div></div>`;
   } else {
     box.innerHTML = `
@@ -332,14 +333,15 @@ function renderAndroidSetup() {
       <ol>
         <li>Touchez « Activer » ci-dessous.</li>
         <li>Choisissez <b>Lecture rapide · lire l’écran</b> et activez-le.</li>
-        <li>Activez aussi le <b>raccourci</b> : un bouton flottant apparaîtra.</li>
+        <li>Ouvrez les réglages du <b>raccourci</b>, cochez <b>Maintenir les touches de volume</b> et décochez <b>Bouton d’accessibilité</b> (sinon un bouton flottant reste à l’écran).</li>
+        <li>Ensuite, dans n’importe quelle app, maintenez les deux touches de volume quelques secondes. La première fois, Android demande de confirmer le raccourci.</li>
       </ol>
       ${
         native.needsRestrictedSettingsHint?.()
           ? `<p class="muted">Option grisée (« paramètre restreint ») ? Touchez « Infos de l’appli », puis ⋮ en haut à droite → <b>Autoriser les paramètres restreints</b>, et revenez.</p>`
           : ''
       }
-      <p class="muted">Le texte n’est lu que quand vous touchez le bouton, et ne quitte jamais votre téléphone.</p>
+      <p class="muted">Le texte n’est lu que quand vous utilisez le raccourci, et ne quitte jamais votre téléphone.</p>
       <div class="row"><button class="primary" data-a="settings">Activer</button>${
         native.needsRestrictedSettingsHint?.() ? '<button class="ghost" data-a="appinfo">Infos de l’appli</button>' : ''
       }</div>`;

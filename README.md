@@ -7,7 +7,7 @@ It reads from anywhere:
 
 | Where | How |
 |---|---|
-| **Android, any app** | Tap the **accessibility button** (or the quick settings tile). The app reads the text on screen, including subscriber-only articles in your news apps, because it reads what *your* logged-in app is showing. |
+| **Android, any app** | Hold **both volume keys** for a few seconds (or use the quick settings tile). In the service's shortcut settings, pick “Hold volume keys” and untick “Accessibility button” to get rid of the floating button. The app reads the text on screen, including subscriber-only articles in your news apps, because it reads what *your* logged-in app is showing. |
 | Android, selected text | Select text → **Lecture rapide** in the selection menu. |
 | Android, shared link | Share → **Lecture rapide**. If the site has a paywall, use "Open the page to log in" once: the in-app browser keeps its cookies. |
 | Chrome (desktop) | Extension: toolbar button, **Alt+Shift+R**, or right-click → "Lecture rapide". Reads the page as you see it, logins included. |
