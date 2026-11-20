@@ -52,6 +52,31 @@ console.log('font loaded:', fontOk);
 await page.keyboard.press('Escape');
 await page.waitForTimeout(200);
 assert.equal(await page.evaluate(() => !!document.getElementById('lecture-rapide-reader')), false, 'Escape closes');
+
+// A word selected in the article: the whole article is read, starting there.
+// "résultats" is also in the heading above: the text around it tells them apart.
+await page.evaluate(() => {
+  const p = [...document.querySelectorAll('article p')].find((p) => p.textContent.startsWith('Les études'));
+  const node = p.firstChild;
+  const i = node.data.indexOf('résultats');
+  const r = document.createRange();
+  r.setStart(node, i);
+  r.setEnd(node, i + 'résultats'.length);
+  getSelection().removeAllRanges();
+  getSelection().addRange(r);
+});
+await worker.evaluate(async () => {
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['web/vendor/Readability.js', 'web/core/extract.js', 'content.js'] });
+});
+await page.waitForFunction(() => document.getElementById('lecture-rapide-reader')?.shadowRoot?.querySelector('.root')?.dataset.state === 'playing', null, { timeout: 8000 });
+assert.equal(await page.evaluate(() => document.getElementById('lecture-rapide-reader').shadowRoot.querySelector('.word').textContent), 'résultats', 'starts at the selected word');
+await page.keyboard.press(' ');
+await page.waitForTimeout(300);
+const paused = await page.evaluate(() => document.getElementById('lecture-rapide-reader').shadowRoot.querySelectorAll('.article p, .article h2').length);
+assert.ok(paused >= 5, 'the whole article, not just the selection');
+await page.keyboard.press('Escape');
+await page.keyboard.press('Escape');
 await ctx.close();
 server.close();
 assert.deepEqual(errors, []);

@@ -142,6 +142,38 @@ await page.waitForTimeout(300);
 assert.equal(await page.isVisible('#library-section'), true);
 await shot('10-home-library');
 
+// A whole page pasted as text: reading starts at the article's title, not the site's menus.
+{
+  const p = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.goto(url);
+  await p.fill('#input', fs.readFileSync('tests/sample-diplo.txt', 'utf8'));
+  await p.click('#read');
+  const host = 'document.querySelector("#reader-host").shadowRoot';
+  await p.waitForFunction(`${host}?.querySelector('.root')?.dataset.state === 'playing'`, null, { timeout: 5000 });
+  assert.equal(await p.evaluate(`${host}.querySelector('.word').textContent`), 'Il', 'first word of the title');
+  assert.equal(await p.evaluate(`${host}.querySelector('.doc-title').textContent`), 'Il ne pourra en rester qu’une');
+  const paras = await p.evaluate(`[...${host}.querySelectorAll('.article p, .article h2')].map((e) => e.textContent)`);
+  assert.ok(!paras.some((t) => /Aller au contenu|Mentions légales|Faire un don/.test(t)), 'no menus or footer');
+
+  // Pausing stops on the word that was on screen a moment before the key press,
+  // and ▶ resumes exactly there.
+  await p.evaluate(`(() => {
+    window.__shown = [];
+    new MutationObserver(() => __shown.push({ w: ${host}.querySelector('.word').textContent, t: performance.now() }))
+      .observe(${host}.querySelector('.word'), { childList: true, characterData: true, subtree: true });
+    addEventListener('keydown', (e) => (window.__keyAt = e.timeStamp), true);
+  })()`);
+  await p.waitForTimeout(2500);
+  await p.keyboard.press(' ');
+  await p.waitForTimeout(300);
+  const expected = await p.evaluate(() => __shown.filter((s) => s.t <= __keyAt - 250).at(-1).w);
+  await p.keyboard.press(' ');
+  await p.waitForTimeout(30);
+  assert.equal(await p.evaluate(`${host}.querySelector('.word').textContent`), expected, 'resumes at the word seen before pausing');
+  await p.close();
+}
+
 // Wide screen: the contents sit beside the text while paused.
 const wide = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 await wide.goto(url);

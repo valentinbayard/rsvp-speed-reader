@@ -14,7 +14,17 @@ data class Block(
     val clickable: Boolean = false,
 )
 
-data class Article(val title: String?, val paragraphs: List<String>, val headings: List<Int>)
+/**
+ * @param firstVisible index of the first paragraph that was on screen, or -1
+ * @param lastVisible  index of the last one, or -1
+ */
+data class Article(
+    val title: String?,
+    val paragraphs: List<String>,
+    val headings: List<Int>,
+    val firstVisible: Int = -1,
+    val lastVisible: Int = -1,
+)
 
 /**
  * Turns everything an app shows (toolbars, tabs, buttons, the article, related
@@ -63,11 +73,15 @@ object TextAssembler {
 
         val paragraphs = ArrayList<String>()
         val headings = ArrayList<Int>()
+        val visible = ArrayList<Boolean>()
         // A subtitle/lede between the title and the first paragraph is worth keeping.
         if (titleIndex >= 0) {
             for (i in titleIndex + 1 until first) {
                 val b = blocks[i]
-                if (!b.clickable && words(b.text) >= 6) paragraphs.add(b.text)
+                if (!b.clickable && words(b.text) >= 6) {
+                    paragraphs.add(b.text)
+                    visible.add(b.visible)
+                }
             }
         }
         for (i in first..last) {
@@ -79,8 +93,9 @@ object TextAssembler {
             if (!keep) continue
             if (b.heading && !isProse(b)) headings.add(paragraphs.size)
             paragraphs.add(b.text)
+            visible.add(b.visible)
         }
-        return Article(title, paragraphs, headings)
+        return Article(title, paragraphs, headings, visible.indexOf(true), visible.lastIndexOf(true))
     }
 
     /**

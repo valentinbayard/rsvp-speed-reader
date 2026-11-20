@@ -9,6 +9,7 @@
     <string name="capturing">Lecture de l’écran…</string>
     <string name="nothing_found">Aucun texte à lire sur cet écran</string>
     <string name="open_article_first">Ouvrez d’abord l’article à lire, puis touchez le bouton</string>
+    <string name="enable_service_for_selection">Pour lire l’article à partir du mot sélectionné, activez « Lecture rapide · lire l’écran »</string>
     <string name="enable_service_first">Activez d’abord le service dans l’application</string>
     <string name="browser_read">Lire</string>
     <string name="browser_hint">Connectez-vous si besoin, puis touchez « Lire »</string>

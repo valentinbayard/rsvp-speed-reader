@@ -32,6 +32,21 @@ class TextAssemblerTest {
     }
 
     @Test
+    fun remembersWhichParagraphsWereOnScreen() {
+        val a = TextAssembler.assemble(
+            listOf(
+                Block("Menu", clickable = true),
+                Block(para1, visible = false),
+                Block(para2),
+                Block("Encore un paragraphe de texte, assez long pour compter comme de la prose.", visible = false),
+            ),
+        )
+        assertEquals(3, a.paragraphs.size)
+        assertEquals(1, a.firstVisible)
+        assertEquals(1, a.lastVisible)
+    }
+
+    @Test
     fun removesDuplicatesFromOverlappingScrollPasses() {
         val a = TextAssembler.assemble(listOf(Block(para1), Block(para2), Block(para1)))
         assertEquals(listOf(para1, para2), a.paragraphs)
