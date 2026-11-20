@@ -11,9 +11,19 @@ export const DEFAULT_SETTINGS = {
   fontSize: 1, // multiplier
   theme: 'light', // light | dark | auto
   punctuation: 1, // 0 | 1 | 1.6
-  smartResume: true,
+  smartResume: false, // ▶ resumes at the highlighted word, not at the start of the sentence
   autoStart: true,
+  version: 2,
 };
+
+/** Stored settings completed with the defaults, and brought up to date. */
+export function withDefaults(stored) {
+  const s = { ...DEFAULT_SETTINGS, ...(stored ?? {}) };
+  // Version 2: resuming at the start of the sentence is no longer the default.
+  if (!(stored?.version >= 2)) s.smartResume = false;
+  s.version = DEFAULT_SETTINGS.version;
+  return s;
+}
 
 function read(key, fallback) {
   try {
@@ -40,7 +50,7 @@ function remove(key) {
 }
 
 export function loadSettings() {
-  return { ...DEFAULT_SETTINGS, ...read(SETTINGS_KEY, {}) };
+  return withDefaults(read(SETTINGS_KEY, {}));
 }
 
 export function saveSettings(settings) {

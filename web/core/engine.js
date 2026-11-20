@@ -19,6 +19,7 @@ export class Engine {
     this._listeners = {};
     this._timer = null;
     this._pausedAt = null; // index where the last pause happened
+    this._shown = []; // recent {index, at}: which word was on screen when
     this._now = now ?? (() => performance.now());
     this._setTimer = setTimer ?? ((fn, ms) => setTimeout(fn, ms));
     this._clearTimer = clearTimer ?? ((t) => clearTimeout(t));
@@ -57,20 +58,36 @@ export class Engine {
     this._sinceStart = 0;
     this._rampLength = this.readMs === 0 ? 8 : 4;
     this.state = 'playing';
+    this._shown = [];
     this._emit('state', this.state);
-    this._emit('word', this.index);
+    this._show(this.index);
     this._lastTick = this._now();
     this._schedule(this._now());
   }
 
-  pause() {
+  /**
+   * Pauses. With `at` (a time from the same clock as `now`), stops on the word
+   * that was on screen at that moment rather than the current one: by the time
+   * a tap or a key press arrives, a word or two have gone by.
+   */
+  pause({ at } = {}) {
     if (!this.isPlaying) return;
     this._clearTimer(this._timer);
     this._timer = null;
     this.readMs += this._now() - this._lastTick;
     this.state = 'paused';
+    const back = at == null ? null : this._shown.findLast((s) => s.at <= at);
+    const moved = back != null && back.index < this.index;
+    if (moved) this.index = back.index;
     this._pausedAt = this.index;
     this._emit('state', this.state);
+    if (moved) this._emit('word', this.index);
+  }
+
+  _show(index) {
+    this._shown.push({ index, at: this._now() });
+    if (this._shown.length > 24) this._shown.shift();
+    this._emit('word', index);
   }
 
   toggle() {
@@ -83,7 +100,9 @@ export class Engine {
     if (this.state === 'ended') this.state = 'paused';
     this.index = i;
     this._pausedAt = null;
-    this._emit('word', i);
+    this._shown = [];
+    if (this.isPlaying) this._show(i);
+    else this._emit('word', i);
     if (this.isPlaying) {
       this._clearTimer(this._timer);
       this._sinceStart = 0;
@@ -118,7 +137,7 @@ export class Engine {
     }
     this.index++;
     this._sinceStart++;
-    this._emit('word', this.index);
+    this._show(this.index);
     // Schedule from when the word was due, not when the timer fired, to avoid drift;
     // but never try to catch up more than a frame.
     this._schedule(Math.max(due, now - 16));

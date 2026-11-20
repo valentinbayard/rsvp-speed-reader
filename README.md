@@ -8,17 +8,20 @@ It reads from anywhere:
 | Where | How |
 |---|---|
 | **Android, any app** | Tap the **accessibility button** (or the quick settings tile). The app reads the text on screen, including subscriber-only articles in your news apps, because it reads what *your* logged-in app is showing. |
-| Android, selected text | Select text → **Lecture rapide** in the selection menu. |
+| Android, selected text | Select text → **Lecture rapide** in the selection menu. Select a single word (or two) to read the whole article from that word (needs the screen reading service). |
 | Android, shared link | Share → **Lecture rapide**. If the site has a paywall, use "Open the page to log in" once: the in-app browser keeps its cookies. |
-| Chrome (desktop) | Extension: toolbar button, **Alt+Shift+R**, or right-click → "Lecture rapide". Reads the page as you see it, logins included. |
-| Web | Paste a text (or a public link) into the web app. |
+| Chrome (desktop) | Extension: toolbar button, **Alt+Shift+R**, or right-click → "Lecture rapide". Reads the page as you see it, logins included. Select a word first to start reading there; select a longer passage to read only that. |
+| Web | Paste a text (or a public link) into the web app. A whole page copied with its menus is trimmed to the article. |
 
 ## Reading
 
 - **Tap** anywhere to pause. The text around the word appears, with the word
-  highlighted exactly where the flashing word was. Scroll freely.
+  highlighted exactly where the flashing word was. Scroll freely. The pause
+  lands on the word that was on screen a quarter of a second before your tap
+  (or key press), so it is the word you saw, not the one or two that flashed
+  while your finger was moving.
 - **Tap a word** to move there, then **tap it again** (or ▶) to continue from it.
-- ▶ resumes from the **start of the current sentence**. You can turn this off in Aa.
+- ▶ resumes from the **highlighted word**. In Aa, you can choose to go back to the start of the sentence instead.
 - While reading:
   - **swipe ← →** to skip to the next or previous sentence;
   - **drag ↑ ↓** to change the speed.
@@ -47,7 +50,8 @@ Words and timing follow Spritz's patent ([US 8,903,174](https://patents.google.c
 - Words of more than 13 letters are split into even pieces, at their own hyphens or at syllable breaks (TeX hyphenation patterns for French and English, a simple syllable rule for other languages): `particu-` `lièrement`.
 - A number and its unit are shown together: `12 000 km`, `3 h`.
 - Words of more than 7 letters stay 1.3× longer, more than 13 letters 1.6×; numbers and names a little longer too. Times are scaled so the average word lasts exactly 60000/WPM ms.
-- After a sentence there is a pause of 1, 2.2 or 3.3 words' time depending on its length (up to 7 words, up to 22, more). Paragraphs end with a longer pause. Commas and asides (dashes, parentheses) get a short one, which the patent does not have.
+- After a sentence there is a pause of 2, 2.6 or 3.3 words' time depending on its length (up to 7 words, up to 22, more), and never less than 0.28 s, so it stays noticeable at high speeds. The patent's pauses (1, 2.2, 3.3) felt too short. Paragraphs end with a pause of at least 3.3 words (0.45 s). Commas and asides (dashes, parentheses) get a short one, which the patent does not have.
+- Footnote calls glued to a word (`disciplinaire1`) do not count as letters.
 - A stop followed by a lower-case word (« Viens ! » dit-il) does not end the sentence.
 - The first few words after starting are a little slower, so your eyes can lock on.
 

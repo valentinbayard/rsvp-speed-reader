@@ -12,6 +12,8 @@ const LETTER = /[\p{L}\p{N}]/u;
 const SENTENCE_END = /[.!?…]+[\s»”’"')\]]*$/u;
 const CLAUSE_END = /[,;:]+[\s»”’"')\]]*$/u;
 const CLOSE_BRACKET = /[)\]][\s»”’"']*$/u;
+// Punctuation only, ending like the end of a clause: the closing dash of an aside ("–,").
+const CLOSING_RUN = /^[^\p{L}\p{N}]*[,;:.!?…»”")\]]$/u;
 // "[…]" marks words left out of a quotation, mid-sentence.
 const ELIDED = /^[(\[](?:…|\.{3})[)\]][^\p{L}\p{N}]*$/u;
 // Digit groups split by a (narrow no-break) space are one number: 12 000, 1 500 000.
@@ -44,20 +46,38 @@ const STOPWORDS = {
 
 /**
  * Splits pasted / extracted text into clean paragraphs.
- * Blank lines separate paragraphs. When the text has no blank lines at all,
- * single line breaks are treated as paragraph breaks (typical of copied text).
+ * Blank lines separate paragraphs. Inside a block, each line is its own
+ * paragraph (text copied from a web page puts every menu entry, title and
+ * paragraph on its own line), unless the block looks hard-wrapped (e-mails,
+ * plain-text books), where lines are joined back.
  */
 export function toParagraphs(raw) {
   if (Array.isArray(raw)) return raw.map(cleanLine).filter(Boolean);
   const text = String(raw ?? '')
     .replace(/\r\n?/g, '\n')
     .replace(/[\u200B\u200C\u200D\uFEFF\u00AD]/g, '');
-  const blocks = /\n[ \t ]*\n/.test(text) ? text.split(/\n[ \t ]*\n+/) : text.split('\n');
-  return blocks.map(cleanLine).filter(Boolean);
+  return text
+    .split(/\n[ \t\u00A0]*\n+/)
+    .flatMap((block) => {
+      const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
+      return isHardWrapped(lines) ? [lines.join(' ')] : lines;
+    })
+    .map(cleanLine)
+    .filter(Boolean);
+}
+
+/** Lines of at most 100 characters, all but the last at least 40: wrapped at a fixed width. */
+function isHardWrapped(lines) {
+  return lines.length >= 2 && lines.every((l, k) => l.length <= 100 && (k === lines.length - 1 || l.length >= 40));
 }
 
 function cleanLine(s) {
-  return String(s).normalize('NFC').replace(/[ \t\n\f\v]+/g, ' ').trim();
+  return String(s)
+    .normalize('NFC')
+    .replace(/[ \t\n\f\v]+/g, ' ')
+    .trim()
+    // A drop cap glued to the next word: "Àl’automne" → "À l’automne".
+    .replace(/^([«“"]?\s?[ÀA])(?=(?:[ldjmnst]|qu)['’]\p{L})/u, '$1 ');
 }
 
 /** 'fr', 'en' or null, from the share of very common words. */
@@ -104,7 +124,8 @@ export function tokenize(paragraphs, { lang = detectLang(paragraphs) } = {}) {
       const s = para.slice(run.start, run.end);
       const prev = merged[merged.length - 1];
       // A dash or a bracket opens an aside: pause before it, as for a comma.
-      if (prev && (s === '-' || /^[(\[—–]/u.test(s)) && !ELIDED.test(s)) prev.breakAfter = true;
+      const closing = !ELIDED.test(s) && (CLOSING.test(s) || CLOSING_RUN.test(s)) && !OPENING.test(s);
+      if (prev && !closing && (s === '-' || /^[(\[—–]/u.test(s)) && !ELIDED.test(s)) prev.breakAfter = true;
       if (pendingOpen) {
         run.start = pendingOpen.start;
         pendingOpen = null;
@@ -116,7 +137,7 @@ export function tokenize(paragraphs, { lang = detectLang(paragraphs) } = {}) {
         prev.end = run.end;
         continue;
       }
-      if (CLOSING.test(s) && merged.length && !OPENING.test(s)) {
+      if (closing && merged.length) {
         prev.end = run.end;
       } else if (OPENING.test(s) && !LETTER.test(s)) {
         // Opening quotes and dashes lean on the next word; a stray trailing one
@@ -253,15 +274,31 @@ function abbreviation(word) {
   return null;
 }
 
+// Footnote calls glued to a word: "disciplinaire1 »", and "1Cité par…" in the notes.
+const FOOTNOTE_END = /(?<=\p{Ll}{2})\d{1,2}(?=[^\p{L}\p{N}]*$)/u;
+const FOOTNOTE_START = /^([^\p{L}\p{N}]*)\d{1,2}(?=\p{Lu}\p{Ll})/u;
+
+/** `text` without footnote numbers, for counting letters and timing. */
+export function withoutFootnote(text) {
+  return text.replace(FOOTNOTE_END, '').replace(FOOTNOTE_START, '$1');
+}
+
 /**
  * Optimal recognition point: the letter the eye should land on, just left of
  * the middle (the word-length table of Spritz-style readers). Counted on letters only, so
- * quotes, apostrophes (l'œil, c'est) and hyphens are never highlighted.
+ * quotes, apostrophes (l'œil, c'est), hyphens and footnote numbers are never highlighted.
  */
 export function orpIndex(text) {
   const chars = Array.from(text);
+  // Code-point range of a footnote number, left out of the count.
+  let skipFrom = -1, skipTo = -1;
+  const end = FOOTNOTE_END.exec(text);
+  const start = FOOTNOTE_START.exec(text);
+  const cpIndex = (utf16) => Array.from(text.slice(0, utf16)).length;
+  if (end) [skipFrom, skipTo] = [cpIndex(end.index), cpIndex(end.index + end[0].length)];
+  else if (start) [skipFrom, skipTo] = [cpIndex(start[1].length), cpIndex(start[0].length)];
   const letters = [];
-  chars.forEach((c, k) => LETTER.test(c) && letters.push(k));
+  chars.forEach((c, k) => LETTER.test(c) && (k < skipFrom || k >= skipTo) && letters.push(k));
   if (!letters.length) return chars.slice(0, Math.floor((chars.length - 1) / 2)).join('').length;
   const n = letters.length;
   const offset = n <= 1 ? 0 : n <= 5 ? 1 : n <= 9 ? 2 : n <= 13 ? 3 : 4;
@@ -272,7 +309,7 @@ export function orpIndex(text) {
 /** Number of letters in a token (for timing). */
 export function letterCount(text) {
   let n = 0;
-  for (const c of text) if (LETTER.test(c)) n++;
+  for (const c of withoutFootnote(text)) if (LETTER.test(c)) n++;
   return n;
 }
 

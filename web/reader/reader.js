@@ -6,6 +6,10 @@ import { t } from '../core/i18n.js';
 
 const BASE = new URL('..', import.meta.url).href;
 
+// Time between seeing a word and the finger or key that stops on it: pausing
+// goes back to the word that was on screen this long before the tap.
+const REACTION_MS = 250;
+
 const ICONS = {
   close: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   play: '<svg viewBox="0 0 24 24"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.4-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg>',
@@ -391,10 +395,11 @@ export function createReader(host, opts) {
     engine.play();
   }
 
-  function pause() {
+  /** @param {number} [at] when the user asked (performance.now() clock); defaults to now */
+  function pause(at = performance.now()) {
     clearTimeout(leadTimer);
     leadEl.classList.remove('run');
-    if (engine.isPlaying) engine.pause();
+    if (engine.isPlaying) engine.pause({ at: at - REACTION_MS });
     else if (state === 'ready') enterPaused();
   }
 
@@ -582,7 +587,7 @@ export function createReader(host, opts) {
         clearTimeout(leadTimer);
         leadEl.classList.remove('run');
         play();
-      } else if (state === 'playing') pause();
+      } else if (state === 'playing') pause(g.t);
     }
   });
   stage.addEventListener('pointercancel', () => (gesture = null));
@@ -663,7 +668,7 @@ export function createReader(host, opts) {
     else if (k === ']') jumpSection(1); else if (k === ' ' || k === 'Spacebar' || k === 'k') {
       if (e.target?.tagName === 'BUTTON' && k !== 'k') {
         handled = false;
-      } else if (state === 'playing') pause();
+      } else if (state === 'playing') pause(e.timeStamp);
       else play();
     } else if (k === 'Enter' && state !== 'playing' && e.target?.tagName !== 'BUTTON') play();
     else if (k === 'ArrowLeft') {
@@ -677,7 +682,7 @@ export function createReader(host, opts) {
     else if (k === '+' || k === '=') changeSpeed(WPM_STEP);
     else if (k === '-') changeSpeed(-WPM_STEP);
     else if (k === 'Escape') {
-      if (state === 'playing' || state === 'ready') pause();
+      if (state === 'playing' || state === 'ready') pause(e.timeStamp);
       else opts.onClose?.();
     } else handled = false;
     if (handled) {

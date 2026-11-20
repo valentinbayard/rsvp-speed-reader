@@ -1,5 +1,6 @@
 import { createReader, addFonts } from './reader/reader.js';
-import { toParagraphs, tokenize, hashText } from './core/text.js';
+import { toParagraphs, tokenize, hashText, tokenAt } from './core/text.js';
+import { findArticle, locate } from './core/article.js';
 import * as store from './core/storage.js';
 
 // Optional URL extraction service for the web version (see /worker).
@@ -37,7 +38,10 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyThe
 // ---------- Opening documents ----------
 
 /**
- * @param {{title?: string, text?: string, paragraphs?: string[], headings?: number[], source?: string, url?: string}} item
+ * @param {{title?: string, text?: string, paragraphs?: string[], headings?: number[], source?: string, url?: string,
+ *   start?: import('./core/article.js').Start, fallback?: boolean}} item
+ *   `start`: a passage selected on the page, to start reading from;
+ *   `fallback`: the paragraphs are a whole page, not an extracted article
  * @param {{external?: boolean}} [how]
  */
 function openText(item, how = {}) {
@@ -45,17 +49,31 @@ function openText(item, how = {}) {
   let headings = item.headings ?? [];
   if (!paragraphs.length) return false;
   let title = (item.title ?? '').trim();
+  if (!item.paragraphs || item.fallback) {
+    // A whole page copied as text: keep the article, not the site's menus.
+    const article = findArticle(paragraphs);
+    if (article) {
+      paragraphs = article.paragraphs;
+      headings = [];
+      title ||= article.title ?? '';
+    }
+  }
+  let start = item.start;
   if (title && paragraphs[0] !== title && !paragraphs[0].startsWith(title)) {
     paragraphs = [title, ...paragraphs];
     headings = [0, ...headings.map((h) => h + 1)];
+    const shift = (k) => (k >= 0 ? k + 1 : k);
+    if (start) start = { ...start, fromParagraph: shift(start.fromParagraph), toParagraph: shift(start.toParagraph) };
   }
   if (!title) title = paragraphs[0].length > 90 ? paragraphs[0].slice(0, 88).trimEnd() + '…' : paragraphs[0];
 
   const id = hashText(paragraphs.join('\n'));
-  const words = tokenize(paragraphs).length;
+  const tokens = tokenize(paragraphs);
+  const words = tokens.length;
   if (!words) return false;
+  const at = start ? locate(paragraphs, start) : null;
   const saved = store.saveDoc({ id, title, paragraphs, headings, source: item.source ?? hostOf(item.url), url: item.url, words });
-  mountReader(saved, how.external);
+  mountReader(saved, how.external, at ? tokenAt(tokens, at.p, at.offset) : null);
   return true;
 }
 
@@ -67,11 +85,12 @@ function openSaved(id) {
   }
 }
 
-function mountReader(doc, external) {
+/** @param {number|null} [startAt] token to start reading from, instead of the remembered position */
+function mountReader(doc, external, startAt = null) {
   reader?.destroy();
   readerFromOutside = !!external;
-  const position = doc.position ?? 0;
-  const resumed = position > 0 && position < doc.words - 1;
+  const position = startAt ?? doc.position ?? 0;
+  const resumed = startAt == null && position > 0 && position < doc.words - 1;
   home.hidden = true;
   loading.hidden = true;
   document.body.classList.add('reading');
@@ -79,7 +98,7 @@ function mountReader(doc, external) {
   reader = createReader(readerHost, {
     doc,
     settings,
-    position: resumed ? position : 0,
+    position: resumed || startAt != null ? position : 0,
     resumed,
     onSettings: (s) => {
       settings = s;
@@ -209,7 +228,7 @@ window.__rsvp = {
   },
 };
 
-function handleIncoming({ title, text, url, source, paragraphs, headings }, how) {
+function handleIncoming({ title, text, url, source, paragraphs, headings, start, fallback }, how) {
   const urlOnly = url && !paragraphs?.length && (!text || text.trim() === url || URL_RE.test(text));
   if (urlOnly) return openUrl(url, how);
   if (!paragraphs?.length && text && URL_RE.test(text)) return openUrl(text.trim(), how);
@@ -218,7 +237,7 @@ function handleIncoming({ title, text, url, source, paragraphs, headings }, how)
     const link = (text.match(URL_IN_TEXT) ?? [])[0] ?? url;
     if (link) return openUrl(link, how);
   }
-  if (!openText({ title, text, paragraphs, headings, url, source }, how)) showHome();
+  if (!openText({ title, text, paragraphs, headings, url, source, start, fallback }, how)) showHome();
 }
 
 // ---------- Home ----------

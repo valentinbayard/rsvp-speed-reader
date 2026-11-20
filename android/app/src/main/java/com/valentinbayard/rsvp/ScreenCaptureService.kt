@@ -63,7 +63,11 @@ class ScreenCaptureService : AccessibilityService() {
         thread = null
     }
 
-    fun capture(fromTile: Boolean) {
+    /**
+     * @param start a word the user selected in the app: reading starts there,
+     *   in the whole article, instead of at the top
+     */
+    fun capture(fromTile: Boolean, start: String? = null) {
         if (busy || thread == null) return
         busy = true
         toast(getString(R.string.capturing))
@@ -82,12 +86,12 @@ class ScreenCaptureService : AccessibilityService() {
             }
             main.post {
                 busy = false
-                handleResult(result)
+                handleResult(result, start)
             }
         }
     }
 
-    private fun handleResult(result: ScreenTextCollector.Result?) {
+    private fun handleResult(result: ScreenTextCollector.Result?, start: String?) {
         if (result == null) {
             toast(getString(R.string.nothing_found))
             return
@@ -107,6 +111,15 @@ class ScreenCaptureService : AccessibilityService() {
             .put("headings", JSONArray(article.headings))
             .put("source", appLabel(result.packageName))
             .put("external", true)
+        if (start != null) {
+            // The selected word is on screen: look for it among the paragraphs that were.
+            payload.put(
+                "start",
+                JSONObject().put("text", start)
+                    .put("fromParagraph", article.firstVisible)
+                    .put("toParagraph", article.lastVisible),
+            )
+        }
         PayloadStore.put(payload.toString())
         startActivity(
             Intent(this, MainActivity::class.java)
